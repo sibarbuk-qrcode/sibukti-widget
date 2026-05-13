@@ -224,6 +224,57 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
 
+/* ── Dashboard ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border-light);
+  border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat-card.c1::before{background:var(--accent)}
+.stat-card.c2::before{background:var(--success)}
+.stat-card.c3::before{background:var(--warning)}
+.stat-label{font-size:9px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dark-2);margin-bottom:8px}
+.stat-value{font-size:30px;font-weight:700;font-family:var(--mono);color:var(--text-dark);line-height:1}
+.stat-sub{font-size:9px;color:var(--text-dark-2);margin-top:5px;font-family:var(--mono)}
+
+.dash-grid{display:grid;grid-template-columns:1fr 260px;gap:14px}
+.section-title{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--text-dark);display:flex;align-items:center;gap:7px;margin-bottom:10px;
+}
+.section-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--accent);border-radius:1px}
+.card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:14px}
+
+.act-table{width:100%;border-collapse:collapse}
+.act-table th{
+  font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;
+  color:var(--text-dark-2);padding:0 10px 8px;text-align:left;
+  border-bottom:1px solid var(--border-light);
+}
+.act-table td{
+  padding:8px 10px;font-size:11px;color:var(--text-dark);
+  border-bottom:1px solid var(--bg-page);vertical-align:middle;
+}
+.act-table tr:last-child td{border-bottom:none}
+.act-table tbody tr:hover td{background:var(--bg-page)}
+.mono-sm{font-family:var(--mono);font-size:9px;color:var(--text-dark-2)}
+
+.qlist-item{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--border-light)}
+.qlist-item:last-child{border-bottom:none}
+.qlist-dot{width:7px;height:7px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.qlist-text{font-size:10px;color:var(--text-dark);line-height:1.5}
+.qlist-time{font-family:var(--mono);font-size:9px;color:var(--text-muted);margin-top:1px}
+
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;margin-top:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-fill{
+  width:100%;border-radius:2px 2px 0 0;background:var(--accent);
+  opacity:.75;min-height:3px;transition:height .4s ease;
+}
+.bar-label{font-size:8px;font-family:var(--mono);color:var(--text-muted)}
+.dash-empty{font-size:11px;color:var(--text-dark-2);text-align:center;padding:20px 0;font-family:var(--mono)}
+
 /* ── Grist Loading ── */
 #grist-loading{
   position:fixed;inset:0;background:var(--navy);
@@ -341,12 +392,61 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <div id="page-dashboard" class="page active">
         <div class="sticky-toolbar">
           <span class="page-title">Dashboard</span>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadDashboard()">↻ Refresh</button>
         </div>
         <div class="page-scroll">
-          <div class="page-placeholder">
-            <div class="placeholder-icon">📊</div>
-            <div class="placeholder-title">Dashboard</div>
-            <div class="placeholder-sub">Statistik dan aktivitas terkini akan tampil di sini. (Tahap 5)</div>
+
+          <!-- Stat Cards -->
+          <div class="stats-grid">
+            <div class="stat-card c1">
+              <div class="stat-label">Total Perkara</div>
+              <div class="stat-value" id="stat-perkara">—</div>
+              <div class="stat-sub" id="stat-perkara-sub"></div>
+            </div>
+            <div class="stat-card c2">
+              <div class="stat-label">Total Barang Bukti</div>
+              <div class="stat-value" id="stat-bb">—</div>
+              <div class="stat-sub" id="stat-bb-sub"></div>
+            </div>
+            <div class="stat-card c3">
+              <div class="stat-label">QR Label Dicetak</div>
+              <div class="stat-value" id="stat-qr">—</div>
+              <div class="stat-sub" id="stat-qr-sub"></div>
+            </div>
+          </div>
+
+          <!-- Grid: Aktivitas + Sidebar kanan -->
+          <div class="dash-grid">
+
+            <!-- Kiri: Aktivitas Terkini -->
+            <div>
+              <div class="section-title">Aktivitas Terkini</div>
+              <div class="card" style="padding:0">
+                <table class="act-table">
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>Petugas</th>
+                      <th>Aktivitas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-log-tbody">
+                    <tr><td colspan="3" class="dash-empty">Memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Kanan: Bar Chart -->
+            <div>
+              <div class="section-title">BB Masuk per Bulan</div>
+              <div class="card">
+                <div class="bar-chart" id="dash-bar-chart">
+                  <div class="dash-empty" style="width:100%">Memuat...</div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -584,6 +684,8 @@ function showPage(id, navEl) {
     const match = document.querySelector(`.nav-item[data-page="${id}"]`);
     if (match) match.classList.add('active');
   }
+
+  if (id === 'dashboard') loadDashboard();
 }
 
 /* ════════════════════════════════════════
@@ -687,6 +789,113 @@ async function logActivity(aksi) {
   } catch (e) {
     console.warn('Log gagal:', e);
   }
+}
+
+/* ════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════ */
+async function loadDashboard() {
+  try {
+    const [rawPerkara, rawBB, rawLog] = await Promise.all([
+      grist.docApi.fetchTable('Perkara'),
+      grist.docApi.fetchTable('BarangBukti'),
+      grist.docApi.fetchTable('LogAktivitas'),
+    ]);
+
+    const perkara = tableToObjects(rawPerkara);
+    const bb      = tableToObjects(rawBB);
+    const log     = tableToObjects(rawLog);
+
+    // ── Stat Cards ──
+    const totalPerkara = perkara.length;
+    const totalBB      = bb.length;
+    const totalQR      = bb.filter(b => b.qr_url && b.qr_url.trim() !== '').length;
+
+    document.getElementById('stat-perkara').textContent = totalPerkara;
+    document.getElementById('stat-bb').textContent      = totalBB;
+    document.getElementById('stat-qr').textContent      = totalQR;
+
+    document.getElementById('stat-perkara-sub').textContent =
+      totalPerkara === 0 ? 'Belum ada data' : `${totalPerkara} perkara tercatat`;
+    document.getElementById('stat-bb-sub').textContent =
+      totalBB === 0 ? 'Belum ada data' : `${totalBB} item terdaftar`;
+    document.getElementById('stat-qr-sub').textContent =
+      totalQR === 0 ? 'Belum ada QR dibuat' : `${totalQR} dari ${totalBB} BB`;
+
+    // ── Log Aktivitas Terkini (5 terakhir) ──
+    const tbody = document.getElementById('dash-log-tbody');
+    const sorted = [...log].sort((a, b) => {
+      return new Date(b.tgl || 0) - new Date(a.tgl || 0);
+    }).slice(0, 5);
+
+    if (sorted.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="dash-empty">Belum ada aktivitas.</td></tr>`;
+    } else {
+      const dotColors = ['var(--accent)','var(--success)','var(--warning)','var(--danger)','var(--text-muted)'];
+      tbody.innerHTML = sorted.map((l, i) => {
+        const tgl = l.tgl ? formatDateTime(l.tgl) : '—';
+        return `<tr>
+          <td class="mono-sm">${tgl}</td>
+          <td style="font-size:11px;font-weight:500">${l.petugas || '—'}</td>
+          <td style="font-size:11px">${l.aksi || '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Bar Chart BB per Bulan (6 bulan terakhir) ──
+    renderBarChart(bb);
+
+  } catch (e) {
+    console.error('Dashboard error:', e);
+    showToast('Gagal memuat data dashboard.', 'error');
+  }
+}
+
+function renderBarChart(bb) {
+  const container = document.getElementById('dash-bar-chart');
+  const now   = new Date();
+  const months = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      label: d.toLocaleString('id-ID', { month: 'short' }),
+      year:  d.getFullYear(),
+      month: d.getMonth(),
+      count: 0,
+    });
+  }
+
+  bb.forEach(b => {
+    if (!b.tgl_masuk) return;
+    const d = new Date(b.tgl_masuk * 1000); // Grist Date = detik sejak epoch
+    months.forEach(m => {
+      if (d.getFullYear() === m.year && d.getMonth() === m.month) m.count++;
+    });
+  });
+
+  const maxCount = Math.max(...months.map(m => m.count), 1);
+  const maxHeight = 70;
+
+  container.innerHTML = months.map((m, i) => {
+    const h = Math.max(Math.round((m.count / maxCount) * maxHeight), m.count > 0 ? 4 : 2);
+    const isLast = i === months.length - 1;
+    return `<div class="bar-col">
+      <div class="bar-fill" style="height:${h}px;${isLast ? 'background:var(--success);opacity:1' : ''}"></div>
+      <div class="bar-label">${m.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function formatDateTime(val) {
+  if (!val) return '—';
+  try {
+    const d = new Date(val);
+    if (isNaN(d)) return val;
+    const tgl = d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' });
+    const jam = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `${tgl} ${jam}`;
+  } catch { return val; }
 }
 </script>
 </body>
