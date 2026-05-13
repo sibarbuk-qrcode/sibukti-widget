@@ -439,13 +439,10 @@ let allUsers = [];    // cache tabel User dari Grist
 /* ════════════════════════════════════════
    GRIST INIT
 ════════════════════════════════════════ */
-grist.ready({ requiredAccess: 'full' });
-
-grist.on('ready', async () => {
+function onGristReady() {
+  if (gristReady) return;
   gristReady = true;
   document.getElementById('grist-loading').classList.add('hide');
-
-  // Cek sesi yang tersimpan
   const saved = sessionStorage.getItem('sibukti_session');
   if (saved) {
     session = JSON.parse(saved);
@@ -453,7 +450,20 @@ grist.on('ready', async () => {
   } else {
     showLoginScreen();
   }
+}
+
+grist.ready({ requiredAccess: 'full' });
+
+// Grist tidak punya event 'ready' — gunakan onRecords sebagai trigger init
+let _initDone = false;
+grist.onRecords(function() {
+  if (!_initDone) { _initDone = true; onGristReady(); }
 });
+
+// Fallback: jika onRecords tidak terpanggil (tabel kosong), pakai timeout
+setTimeout(function() {
+  if (!_initDone) { _initDone = true; onGristReady(); }
+}, 1500);
 
 /* ════════════════════════════════════════
    LOGIN
