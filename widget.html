@@ -1540,16 +1540,18 @@ async function loadBarangBukti() {
     const perkaraList = tableToObjects(rawP);
     _bbPerkaraList = perkaraList; // simpan untuk dipakai filterBB
 
-    // Isi dropdown filter perkara
+    // Isi dropdown filter perkara (hanya jika halaman BB sedang ditampilkan)
     const sel = document.getElementById('bb-filter-perkara');
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">Semua Perkara</option>' +
-      perkaraList.map(p => `<option value="${p.id}">${p.no_perkara}</option>`).join('');
-    sel.value = cur;
-
-    renderBBList(_bbData, perkaraList);
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Semua Perkara</option>' +
+        perkaraList.map(p => `<option value="${p.id}">${p.no_perkara}</option>`).join('');
+      sel.value = cur;
+      renderBBList(_bbData, perkaraList);
+    }
   } catch(e) {
-    document.getElementById('bb-list-container').innerHTML =
+    const container = document.getElementById('bb-list-container');
+    if (container) container.innerHTML =
       `<div class="dash-empty">Gagal memuat data.</div>`;
   }
 }
