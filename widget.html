@@ -1,0 +1,2605 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIBUKTI</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+/* ── Reset & Variabel ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0d1b2a;--navy-light:#1e2f45;--navy-border:#253d57;
+  --accent:#00b4d8;--accent-dim:#0090ad;--accent-glow:rgba(0,180,216,0.12);
+  --success:#2ec4b6;--warning:#f4a261;--danger:#e63946;
+  --text-primary:#e8f1f8;--text-secondary:#8aafc8;--text-muted:#4d6f8a;
+  --bg-page:#f0f4f8;--bg-card:#ffffff;
+  --border-light:#d1dce6;
+  --text-dark:#1a2733;--text-dark-2:#4a6278;
+  --mono:'IBM Plex Mono',monospace;
+  --sidebar-w:220px;
+  --radius:4px;
+}
+
+/* ── Animasi Tombol Global ── */
+button,.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;font-size:11px;font-weight:500;
+  cursor:pointer;border-radius:var(--radius);
+  border:1px solid transparent;font-family:inherit;
+  transition:background .15s ease,color .15s ease,border-color .15s ease,
+             transform .1s ease,filter .1s ease,box-shadow .15s ease;
+  user-select:none;
+}
+button:hover,.btn:hover{filter:brightness(1.08)}
+button:active,.btn:active{transform:scale(0.95);filter:brightness(0.9)}
+button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.btn-primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn-primary:hover{background:var(--navy-light)}
+.btn-accent{background:var(--accent);color:var(--navy);border-color:var(--accent-dim);font-weight:600}
+.btn-accent:hover{background:var(--accent-dim);color:#fff}
+.btn-outline{border-color:var(--border-light);color:var(--text-dark);background:var(--bg-card)}
+.btn-outline:hover{background:var(--bg-page);border-color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff;border-color:#c0303a}
+.btn-danger:hover{background:#c0303a}
+.btn-sm{padding:3px 9px;font-size:10px}
+
+/* ── Loading Bar ── */
+.loading-bar-wrap{
+  width:100%;height:6px;background:#e0e8f0;border-radius:3px;
+  overflow:hidden;margin-top:6px;display:none;
+}
+.loading-bar-wrap.visible{display:block}
+.loading-bar-fill{
+  height:100%;width:0%;border-radius:3px;
+  background:var(--accent);
+  transition:width .25s ease,background .3s ease;
+}
+.loading-bar-fill.done{background:var(--success)}
+.loading-bar-fill.delete{background:var(--danger)}
+.loading-bar-label{
+  font-family:var(--mono);font-size:9px;color:var(--text-dark-2);
+  margin-top:3px;display:none;
+}
+.loading-bar-label.visible{display:block}
+
+/* ── Halaman Login ── */
+#login-screen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:linear-gradient(135deg,var(--navy) 0%,#1a3a5c 100%);
+  position:fixed;inset:0;z-index:1000;
+  transition:opacity .4s ease;
+}
+#login-screen.fade-out{opacity:0;pointer-events:none}
+.login-card{
+  background:var(--bg-card);border-radius:8px;
+  padding:40px 36px;width:360px;
+  box-shadow:0 20px 60px rgba(0,0,0,.4);
+  animation:slideUp .4s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-mark{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);letter-spacing:.15em}
+.login-logo-sub{font-size:10px;color:var(--text-dark-2);letter-spacing:.2em;text-transform:uppercase;margin-top:4px}
+.login-field{margin-bottom:16px}
+.login-field label{
+  display:block;font-size:10px;font-family:var(--mono);
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-dark-2);margin-bottom:5px;
+}
+.login-field input{
+  width:100%;padding:9px 12px;border:1px solid var(--border-light);
+  border-radius:var(--radius);font-size:13px;font-family:inherit;
+  color:var(--text-dark);background:var(--bg-page);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.login-field input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+.login-error{
+  font-size:11px;color:var(--danger);font-family:var(--mono);
+  margin-bottom:12px;display:none;text-align:center;
+  animation:shake .3s ease;
+}
+.login-error.visible{display:block}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.btn-login{
+  width:100%;justify-content:center;padding:10px;font-size:13px;
+  background:var(--accent);color:var(--navy);border:none;font-weight:700;
+  border-radius:var(--radius);letter-spacing:.05em;
+}
+.btn-login:hover{background:var(--accent-dim);color:#fff}
+.login-loading{margin-top:10px}
+
+/* ── Layout Utama ── */
+#app{
+  display:none;height:100vh;overflow:hidden;
+  flex-direction:row;background:var(--bg-page);
+}
+#app.visible{display:flex}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:var(--sidebar-w);background:var(--navy);
+  display:flex;flex-direction:column;flex-shrink:0;
+  border-right:1px solid var(--navy-border);
+}
+.sidebar-logo{padding:16px 18px 14px;border-bottom:1px solid var(--navy-border)}
+.logo-mark{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.12em}
+.logo-sub{font-size:9px;color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase;margin-top:3px}
+.sidebar-section{padding:16px 0 8px}
+.sidebar-label{
+  font-size:9px;font-family:var(--mono);letter-spacing:.2em;
+  color:var(--text-muted);text-transform:uppercase;padding:0 18px 8px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 18px;
+  cursor:pointer;color:var(--text-secondary);font-size:12px;
+  border-left:3px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  user-select:none;
+}
+.nav-item:hover{background:var(--navy-light);color:var(--text-primary)}
+.nav-item.active{
+  background:var(--accent-glow);color:var(--accent);
+  border-left-color:var(--accent);font-weight:600;
+}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-item.active svg{opacity:1}
+.sidebar-footer{
+  margin-top:auto;padding:14px 18px;
+  border-top:1px solid var(--navy-border);
+  display:flex;align-items:center;gap:10px;
+}
+.user-avatar{
+  width:30px;height:30px;border-radius:var(--radius);
+  background:var(--navy-light);border:1px solid var(--navy-border);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;
+  flex-shrink:0;
+}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:11px;color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:9px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.btn-logout{
+  background:transparent;border:1px solid var(--navy-border);
+  color:var(--text-muted);padding:4px 7px;font-size:10px;border-radius:var(--radius);
+}
+.btn-logout:hover{border-color:var(--danger);color:var(--danger);background:rgba(230,57,70,.08)}
+
+/* ── Konten Utama ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:#c0cdd8;border-radius:2px}
+
+/* ── Halaman ── */
+.page{display:none;flex:1;flex-direction:column;animation:fadeIn .2s ease}
+.page.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.sticky-toolbar{
+  position:sticky;top:0;z-index:10;background:var(--bg-card);
+  border-bottom:1px solid var(--border-light);
+  padding:10px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.page-scroll{flex:1;overflow-y:auto;padding:18px}
+.page-scroll::-webkit-scrollbar{width:4px}
+.page-scroll::-webkit-scrollbar-thumb{background:#c0cdd8;border-radius:2px}
+
+.page-title{
+  font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--text-dark);margin-right:6px;
+}
+
+/* ── Placeholder Halaman ── */
+.page-placeholder{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:10px;color:var(--text-dark-2);padding:40px;
+}
+.placeholder-icon{font-size:48px;opacity:.3}
+.placeholder-title{font-size:14px;font-weight:600;color:var(--text-dark)}
+.placeholder-sub{font-size:11px;color:var(--text-dark-2);text-align:center;max-width:300px;line-height:1.6}
+
+/* ── Toast Notifikasi ── */
+#toast-container{
+  position:fixed;bottom:20px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;
+}
+.toast{
+  padding:10px 16px;border-radius:var(--radius);font-size:11px;
+  font-family:var(--mono);color:#fff;min-width:240px;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+  animation:toastIn .3s ease;
+  display:flex;align-items:center;gap:8px;
+}
+.toast.success{background:var(--success)}
+.toast.error{background:var(--danger)}
+.toast.warning{background:var(--warning);color:var(--navy)}
+.toast.info{background:var(--accent);color:var(--navy)}
+.toast.fade-out{animation:toastOut .3s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
+
+/* ── Dashboard ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border-light);
+  border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat-card.c1::before{background:var(--accent)}
+.stat-card.c2::before{background:var(--success)}
+.stat-card.c3::before{background:var(--warning)}
+.stat-label{font-size:9px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dark-2);margin-bottom:8px}
+.stat-value{font-size:30px;font-weight:700;font-family:var(--mono);color:var(--text-dark);line-height:1}
+.stat-sub{font-size:9px;color:var(--text-dark-2);margin-top:5px;font-family:var(--mono)}
+
+.dash-grid{display:grid;grid-template-columns:1fr 260px;gap:14px}
+.section-title{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--text-dark);display:flex;align-items:center;gap:7px;margin-bottom:10px;
+}
+.section-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--accent);border-radius:1px}
+.card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:14px}
+
+.act-table{width:100%;border-collapse:collapse}
+.act-table th{
+  font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;
+  color:var(--text-dark-2);padding:0 10px 8px;text-align:left;
+  border-bottom:1px solid var(--border-light);
+}
+.act-table td{
+  padding:8px 10px;font-size:11px;color:var(--text-dark);
+  border-bottom:1px solid var(--bg-page);vertical-align:middle;
+}
+.act-table tr:last-child td{border-bottom:none}
+.act-table tbody tr:hover td{background:var(--bg-page)}
+.mono-sm{font-family:var(--mono);font-size:9px;color:var(--text-dark-2)}
+
+.qlist-item{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--border-light)}
+.qlist-item:last-child{border-bottom:none}
+.qlist-dot{width:7px;height:7px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.qlist-text{font-size:10px;color:var(--text-dark);line-height:1.5}
+.qlist-time{font-family:var(--mono);font-size:9px;color:var(--text-muted);margin-top:1px}
+
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;margin-top:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-fill{
+  width:100%;border-radius:2px 2px 0 0;background:var(--accent);
+  opacity:.75;min-height:3px;transition:height .4s ease;
+}
+.bar-label{font-size:8px;font-family:var(--mono);color:var(--text-muted)}
+.dash-empty{font-size:11px;color:var(--text-dark-2);text-align:center;padding:20px 0;font-family:var(--mono)}
+
+/* ── Tabel Data ── */
+.data-table{width:100%;border-collapse:collapse;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden}
+.data-table thead{background:var(--navy)}
+.data-table th{padding:9px 12px;text-align:left;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary);white-space:nowrap}
+.data-table td{padding:9px 12px;font-size:11px;color:var(--text-dark);border-bottom:1px solid var(--border-light);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tbody tr:hover td{background:var(--bg-page);cursor:pointer}
+.data-table tbody tr.deleting td{opacity:.5;pointer-events:none}
+.mono-acc{font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:600}
+
+/* ── Search Box ── */
+.search-box{display:flex;align-items:center;gap:7px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:5px 10px;flex:1;max-width:280px;transition:border-color .15s}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box input{border:none;outline:none;font-family:inherit;font-size:11px;color:var(--text-dark);flex:1;background:transparent}
+.search-icon{color:var(--text-muted);font-size:13px}
+
+/* ── Badge ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:2px;font-size:9px;font-family:var(--mono);font-weight:500;letter-spacing:.04em}
+.badge-ada{background:#e3f8f6;color:#1a8a82}
+.badge-belum{background:#f0f0f0;color:#888}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,42,.5);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-light);width:460px;max-width:95%;overflow:hidden;animation:slideUp .25s ease}
+.modal-header{background:var(--navy);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:12px;font-weight:600;color:var(--accent);font-family:var(--mono)}
+.modal-close{cursor:pointer;color:var(--text-secondary);font-size:18px;line-height:1;background:none;border:none;padding:0;transition:color .15s}
+.modal-close:hover{color:#fff}
+.modal-close:active{transform:scale(0.9)}
+.modal-body{padding:18px}
+.form-field{margin-bottom:13px}
+.form-field label{display:block;font-size:9px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dark-2);margin-bottom:4px}
+.form-field input,.form-field select{width:100%;padding:8px 10px;border:1px solid var(--border-light);border-radius:var(--radius);font-size:12px;font-family:inherit;color:var(--text-dark);background:var(--bg-card);outline:none;transition:border-color .15s,box-shadow .15s}
+.form-field input:focus,.form-field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.modal-footer{display:flex;gap:8px;margin-top:18px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── Detail Perkara ── */
+.detail-header{background:var(--navy);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.detail-back{background:none;border:1px solid var(--navy-border);color:var(--text-secondary);padding:4px 10px;border-radius:var(--radius);font-size:11px;cursor:pointer;transition:all .15s}
+.detail-back:hover{border-color:var(--accent);color:var(--accent)}
+.detail-title{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent)}
+.detail-sub{font-size:10px;color:var(--text-secondary);margin-top:1px}
+.info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.info-item{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 14px}
+.info-item-label{font-size:9px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-dark-2);margin-bottom:3px}
+.info-item-val{font-size:12px;font-weight:500;color:var(--text-dark)}
+
+/* ── Row Delete Progress ── */
+.row-delete-bar{height:3px;background:var(--danger);border-radius:2px;width:0%;transition:width .05s linear;margin-top:2px}
+
+/* ── Barang Bukti Cards ── */
+.bb-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:12px;transition:background .12s,box-shadow .12s;cursor:pointer}
+.bb-card:hover{background:var(--bg-page);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.bb-icon{width:36px;height:36px;border-radius:var(--radius);background:var(--bg-page);border:1px solid var(--border-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.bb-info{flex:1;min-width:0}
+.bb-name{font-size:12px;font-weight:600;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bb-meta{font-size:10px;color:var(--text-dark-2);display:flex;gap:12px;margin-top:3px;flex-wrap:wrap}
+.bb-perkara-chip{font-family:var(--mono);font-size:9px;color:var(--accent);background:var(--navy);padding:2px 7px;border-radius:2px;white-space:nowrap}
+.upload-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--radius);font-size:10px;border:1px solid var(--border-light);color:var(--text-dark-2);background:var(--bg-card);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--bg-page)}
+.upload-btn:active{transform:scale(0.95)}
+.upload-input{display:none}
+.bb-upload-wrap{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.foto-count{font-family:var(--mono);font-size:9px;color:var(--success);text-align:center}
+
+/* ── Modal BB Detail ── */
+.detail-field{margin-bottom:8px;display:flex;gap:8px}
+.detail-field-label{font-size:9px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-dark-2);min-width:80px;padding-top:1px}
+.detail-field-val{font-size:12px;color:var(--text-dark);font-weight:500}
+
+/* ── Grist Loading ── */
+#grist-loading{
+  position:fixed;inset:0;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;z-index:2000;
+  transition:opacity .4s ease;
+}
+#grist-loading.hide{opacity:0;pointer-events:none}
+.grist-spinner{
+  width:36px;height:36px;border:3px solid var(--navy-border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.grist-loading-text{font-family:var(--mono);font-size:11px;color:var(--text-secondary);letter-spacing:.1em}
+
+/* ── Cetak QR Checklist ── */
+.qr-check-row{cursor:pointer}
+.qr-check-row.selected td{background:#e8f8ff}
+
+/* ── Badge Role (User) ── */
+.badge-admin{background:#e8f0fe;color:#1a56cc}
+.badge-operator{background:#f0f8e8;color:#2a7a1a}
+
+/* ── Print Preview Overlay ── */
+#print-preview-overlay{
+  display:none;position:fixed;inset:0;background:#2a2a2a;
+  z-index:3000;flex-direction:column;
+}
+#print-preview-overlay.open{display:flex}
+.pp-controls-wrap{
+  background:var(--navy);border-bottom:1px solid var(--navy-border);
+  padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;
+}
+.pp-title{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;margin-right:auto}
+.pp-pages-wrap{
+  flex:1;overflow-y:auto;padding:24px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+}
+.pp-bg-sel{
+  padding:4px 8px;border:1px solid var(--navy-border);
+  background:var(--navy-light);color:var(--text-primary);
+  border-radius:var(--radius);font-size:11px;outline:none;cursor:pointer;
+}
+
+/* ── Label A4 (2 col × 5 row) ── */
+.label-page{
+  width:210mm;height:297mm;
+  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);
+  gap:0;background:white;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);overflow:hidden;flex-shrink:0;
+}
+.label-item{border:.5px solid #bbb;padding:7px 9px;overflow:hidden;box-sizing:border-box}
+.label-item.bg-red{background:#cc0000;color:#fff;border-color:#aa0000}
+.label-item.label-empty{background:#f8f8f8}
+.label-qr{float:right;width:66px;height:66px;margin-left:6px;margin-bottom:2px;display:block}
+.label-qr-ph{
+  float:right;width:66px;height:66px;margin-left:6px;margin-bottom:2px;
+  background:#eee;border:1px dashed #bbb;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;color:#999;text-align:center;
+}
+.label-text{font-size:8.5pt;line-height:1.4;font-family:Arial,sans-serif;word-break:break-word}
+.lb-name{font-weight:700;font-size:9.5pt;display:block;margin-bottom:2px}
+.lb-row{display:block}
+
+/* ── Media Print: hanya halaman label yang tercetak ── */
+@media print{
+  #grist-loading,#login-screen,#app,#toast-container,.modal-overlay{display:none!important}
+  #print-preview-overlay{position:static!important;background:white!important;display:block!important}
+  .pp-controls-wrap{display:none!important}
+  .pp-pages-wrap{padding:0!important;overflow:visible!important;display:block!important}
+  .label-page{box-shadow:none!important;margin:0!important;page-break-after:always;break-after:page}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Grist Loading Screen ── -->
+<div id="grist-loading">
+  <div class="grist-spinner"></div>
+  <div class="grist-loading-text">Menghubungkan ke Grist...</div>
+</div>
+
+<!-- ── Halaman Login ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-mark">SIBUKTI</div>
+      <div class="login-logo-sub">Sistem Informasi Barang Bukti</div>
+    </div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-username" placeholder="Masukkan username" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Masukkan password" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error">Username atau password salah.</div>
+    <div class="login-loading">
+      <div class="loading-bar-wrap" id="login-bar-wrap">
+        <div class="loading-bar-fill" id="login-bar-fill"></div>
+      </div>
+    </div>
+    <button class="btn btn-login" id="btn-login" onclick="doLogin()" style="margin-top:18px">
+      Masuk
+    </button>
+    <p style="text-align:center;font-size:10px;color:var(--text-dark-2);margin-top:16px;font-family:var(--mono)">
+      SIBUKTI v1.0 &nbsp;·&nbsp; Kejaksaan
+    </p>
+  </div>
+</div>
+
+<!-- ── Aplikasi Utama ── -->
+<div id="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">SIBUKTI</div>
+      <div class="logo-sub">Barang Bukti</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigasi</div>
+
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+
+      <div class="nav-item" data-page="perkara" onclick="showPage('perkara',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Perkara
+      </div>
+
+      <div class="nav-item" data-page="barang-bukti" onclick="showPage('barang-bukti',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Barang Bukti
+      </div>
+
+      <div class="nav-item" data-page="cetak-qr" onclick="showPage('cetak-qr',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><polyline points="14 14 14 20"/><polyline points="14 17 20 17"/><polyline points="20 14 20 14"/><polyline points="20 20 20 20"/></svg>
+        Cetak QR-Code
+      </div>
+
+      <!-- Admin only -->
+      <div class="nav-item nav-admin" data-page="user" onclick="showPage('user',this)" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        User
+      </div>
+
+      <div class="nav-item nav-admin" data-page="log" onclick="showPage('log',this)" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
+        Log Aktivitas
+      </div>
+
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="sidebar-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-username">—</div>
+        <div class="user-role" id="sidebar-role">—</div>
+      </div>
+      <button class="btn btn-logout" onclick="doLogout()" title="Keluar">↩</button>
+    </div>
+  </nav>
+
+  <!-- Konten -->
+  <div class="main">
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="sticky-toolbar">
+          <span class="page-title">Dashboard</span>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+        <div class="page-scroll">
+
+          <!-- Stat Cards -->
+          <div class="stats-grid">
+            <div class="stat-card c1">
+              <div class="stat-label">Total Perkara</div>
+              <div class="stat-value" id="stat-perkara">—</div>
+              <div class="stat-sub" id="stat-perkara-sub"></div>
+            </div>
+            <div class="stat-card c2">
+              <div class="stat-label">Total Barang Bukti</div>
+              <div class="stat-value" id="stat-bb">—</div>
+              <div class="stat-sub" id="stat-bb-sub"></div>
+            </div>
+            <div class="stat-card c3">
+              <div class="stat-label">QR Label Dicetak</div>
+              <div class="stat-value" id="stat-qr">—</div>
+              <div class="stat-sub" id="stat-qr-sub"></div>
+            </div>
+          </div>
+
+          <!-- Grid: Aktivitas + Sidebar kanan -->
+          <div class="dash-grid">
+
+            <!-- Kiri: Aktivitas Terkini -->
+            <div>
+              <div class="section-title">Aktivitas Terkini</div>
+              <div class="card" style="padding:0">
+                <table class="act-table">
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>Petugas</th>
+                      <th>Aktivitas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-log-tbody">
+                    <tr><td colspan="3" class="dash-empty">Memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Kanan: Bar Chart -->
+            <div>
+              <div class="section-title">BB Masuk per Bulan</div>
+              <div class="card">
+                <div class="bar-chart" id="dash-bar-chart">
+                  <div class="dash-empty" style="width:100%">Memuat...</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- PERKARA -->
+      <div id="page-perkara" class="page">
+        <div class="sticky-toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="perkara-search" placeholder="Cari no. perkara, terdakwa, penitip…" oninput="filterPerkara()">
+          </div>
+          <div style="margin-left:auto">
+            <button class="btn btn-primary" onclick="openModalPerkara()">+ Tambah Perkara</button>
+          </div>
+        </div>
+        <div class="page-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>No. Perkara</th>
+                <th>Terdakwa</th>
+                <th>Penitip</th>
+                <th>Tgl Masuk</th>
+                <th>Dokumen</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="perkara-tbody">
+              <tr><td colspan="6" class="dash-empty">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DETAIL PERKARA (sub-halaman) -->
+      <div id="page-detail-perkara" class="page">
+        <div class="detail-header">
+          <button class="detail-back" onclick="showPage('perkara',null)">← Kembali</button>
+          <div>
+            <div class="detail-title" id="detail-perkara-no">—</div>
+            <div class="detail-sub" id="detail-perkara-terdakwa">—</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px" id="detail-perkara-actions"></div>
+        </div>
+        <div class="page-scroll">
+          <div class="info-grid" id="detail-perkara-info"></div>
+          <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+            <div class="section-title">Barang Bukti Perkara Ini</div>
+            <button class="btn btn-primary btn-sm" onclick="openModalBBFromDetail()">+ Tambah BB</button>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>No. BB</th>
+                <th>Nama Barang Bukti</th>
+                <th>Jumlah</th>
+                <th>Tgl Masuk</th>
+                <th>Foto</th>
+                <th>QR</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="detail-bb-tbody">
+              <tr><td colspan="7" class="dash-empty">Belum ada barang bukti.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BARANG BUKTI -->
+      <div id="page-barang-bukti" class="page">
+        <div class="sticky-toolbar">
+          <div class="search-box" style="max-width:220px">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="bb-search" placeholder="Cari nama barang bukti…" oninput="filterBB()">
+          </div>
+          <select id="bb-filter-perkara" onchange="filterBB()" style="padding:5px 8px;border:1px solid var(--border-light);border-radius:var(--radius);font-size:11px;color:var(--text-dark);background:var(--bg-card);cursor:pointer;outline:none;transition:border-color .15s">
+            <option value="">Semua Perkara</option>
+          </select>
+          <div style="margin-left:auto">
+            <button class="btn btn-primary" onclick="openModalBB(null)">+ Tambah BB</button>
+          </div>
+        </div>
+        <div class="page-scroll">
+          <div id="bb-upload-status" style="font-size:10px;color:var(--success);font-family:var(--mono);margin-bottom:8px;display:none"></div>
+          <div style="display:flex;flex-direction:column;gap:6px" id="bb-list-container">
+            <div class="dash-empty">Memuat data...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CETAK QR -->
+      <div id="page-cetak-qr" class="page">
+        <div class="sticky-toolbar">
+          <div class="search-box" style="max-width:200px">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="qr-search" placeholder="Cari nama BB…" oninput="filterCetakQR()">
+          </div>
+          <select id="qr-filter-perkara" onchange="filterCetakQR()"
+            style="padding:5px 8px;border:1px solid var(--border-light);border-radius:var(--radius);font-size:11px;color:var(--text-dark);background:var(--bg-card);cursor:pointer;outline:none;transition:border-color .15s">
+            <option value="">Semua Perkara</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="cekSemuaQR()">Cek Semua</button>
+          <button class="btn btn-outline btn-sm" onclick="batalSemuaQR()">Batal Semua</button>
+          <span id="qr-selected-count" style="font-family:var(--mono);font-size:10px;color:var(--accent)">0 dipilih</span>
+          <div style="margin-left:auto">
+            <button class="btn btn-accent" onclick="openPrintPreview()">🖨 Cetak Label</button>
+          </div>
+        </div>
+        <div class="page-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:36px">☐</th>
+                <th>No.BB</th>
+                <th>Nama Barang Bukti</th>
+                <th>Perkara</th>
+                <th>Terdakwa</th>
+                <th>Tgl Masuk</th>
+                <th>QR</th>
+              </tr>
+            </thead>
+            <tbody id="cetak-qr-tbody">
+              <tr><td colspan="7" class="dash-empty">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- USER (admin only) -->
+      <div id="page-user" class="page">
+        <div class="sticky-toolbar">
+          <span class="page-title">Manajemen User</span>
+          <div style="margin-left:auto">
+            <button class="btn btn-primary" onclick="openModalUser()">+ Tambah User</button>
+          </div>
+        </div>
+        <div class="page-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="user-tbody">
+              <tr><td colspan="3" class="dash-empty">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LOG AKTIVITAS (admin only) -->
+      <div id="page-log" class="page">
+        <div class="sticky-toolbar">
+          <span class="page-title">Log Aktivitas</span>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadLog()">↻ Refresh</button>
+        </div>
+        <div class="page-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Petugas</th>
+                <th>Aktivitas</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody">
+              <tr><td colspan="3" class="dash-empty">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Tambah/Edit Perkara ── -->
+<div class="modal-overlay" id="modal-perkara">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-perkara-title">Tambah Perkara</div>
+      <button class="modal-close" onclick="closeModal('modal-perkara')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mp-rowid">
+      <div class="form-field">
+        <label>No. Perkara</label>
+        <input type="text" id="mp-no" placeholder="cth: 1234/2026/PN Btl">
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Terdakwa</label>
+          <input type="text" id="mp-terdakwa" placeholder="Nama terdakwa">
+        </div>
+        <div class="form-field">
+          <label>Penitip</label>
+          <input type="text" id="mp-penitip" placeholder="Nama penitip">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Tanggal Masuk</label>
+        <input type="date" id="mp-tgl">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-accent" id="btn-simpan-perkara" onclick="simpanPerkara()">Simpan</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-perkara')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Tambah/Edit BB ── -->
+<div class="modal-overlay" id="modal-bb">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-bb-title">Tambah Barang Bukti</div>
+      <button class="modal-close" onclick="closeModal('modal-bb')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mb-rowid">
+      <div class="form-field">
+        <label>Perkara</label>
+        <select id="mb-perkara"></select>
+      </div>
+      <div class="form-field">
+        <label>Nama Barang Bukti</label>
+        <input type="text" id="mb-nama" placeholder="cth: Senjata Api Rakitan">
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Jumlah</label>
+          <input type="number" id="mb-jumlah" placeholder="cth: 12" min="0">
+        </div>
+        <div class="form-field">
+          <label>Satuan</label>
+          <input type="text" id="mb-satuan" placeholder="cth: Pucuk, Gram, Unit">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Tanggal Masuk</label>
+        <input type="date" id="mb-tgl">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-accent" id="btn-simpan-bb" onclick="simpanBB()">Simpan</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-bb')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Detail BB ── -->
+<div class="modal-overlay" id="modal-bb-detail">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="mbd-title">Detail Barang Bukti</div>
+      <button class="modal-close" onclick="closeModal('modal-bb-detail')">×</button>
+    </div>
+    <div class="modal-body" id="mbd-body"></div>
+  </div>
+</div>
+
+<!-- ── Toast Container ── -->
+<div id="toast-container"></div>
+
+<!-- ── Print Preview Overlay ── -->
+<div id="print-preview-overlay">
+  <div class="pp-controls-wrap">
+    <span class="pp-title">Preview Label QR-Code</span>
+    <span id="pp-page-info" style="font-size:10px;color:var(--text-secondary);font-family:var(--mono)"></span>
+    <span style="font-size:10px;color:var(--text-secondary)">Background:</span>
+    <select id="pp-bg-select" class="pp-bg-sel" onchange="applyPrintBg()">
+      <option value="transparent">Transparan (kertas merah)</option>
+      <option value="red">Merah</option>
+    </select>
+    <button class="btn btn-accent btn-sm" onclick="doCetakLabel()">🖨 Print</button>
+    <button class="btn btn-outline btn-sm" style="color:var(--text-secondary)" onclick="closePrintPreview()">✕ Tutup</button>
+  </div>
+  <div id="pp-pages-wrap" class="pp-pages-wrap"></div>
+</div>
+
+<!-- ── Modal Tambah User ── -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tambah User</div>
+      <button class="modal-close" onclick="closeModal('modal-user')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label>Username</label>
+        <input type="text" id="mu-username" placeholder="Masukkan username">
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" id="mu-password" placeholder="Masukkan password">
+      </div>
+      <div class="form-field">
+        <label>Role</label>
+        <select id="mu-role">
+          <option value="operator">Operator</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-accent" id="btn-simpan-user" onclick="simpanUser()">Simpan</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-user')">Batal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+// URL Cloudflare Worker proxy — ganti dengan URL worker kamu setelah deploy
+const GRIST_PROXY_URL = 'https://sibukti-proxy.sibarbuk.workers.dev';
+
+let session = null;   // { username, role }
+let gristReady = false;
+let allUsers = [];    // cache tabel User dari Grist
+
+/* ════════════════════════════════════════
+   GRIST INIT
+════════════════════════════════════════ */
+// Dipanggil sekali setelah Grist siap; cek session lama atau tampilkan login
+function onGristReady() {
+  if (gristReady) return;
+  gristReady = true;
+  document.getElementById('grist-loading').classList.add('hide');
+  const saved = sessionStorage.getItem('sibukti_session');
+  if (saved) {
+    session = JSON.parse(saved);
+    launchApp();
+  } else {
+    showLoginScreen();
+  }
+}
+
+// Deteksi apakah berjalan di dalam iframe Grist
+const _inGrist = (function() {
+  try { return window.self !== window.top; } catch(e) { return true; }
+})();
+
+if (_inGrist) {
+  // Di dalam Grist: panggil ready() lalu tunggu singkat agar channel terbentuk
+  grist.ready({ requiredAccess: 'full' });
+  setTimeout(onGristReady, 800);
+} else {
+  // Di luar Grist (akses langsung): langsung tampil login tanpa loading
+  document.getElementById('grist-loading').classList.add('hide');
+  showLoginScreen();
+}
+
+/* ════════════════════════════════════════
+   LOGIN
+════════════════════════════════════════ */
+// Tampilkan layar login dan fokus ke field username
+function showLoginScreen() {
+  const ls = document.getElementById('login-screen');
+  ls.style.display = 'flex';
+  ls.classList.remove('fade-out');
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('login-username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+// Validasi username+password terhadap tabel User di Grist, lalu set session
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  errEl.classList.remove('visible');
+  if (!username || !password) {
+    errEl.textContent = 'Username dan password wajib diisi.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Memeriksa...';
+  simulateLoadingBar('login-bar-wrap', 'login-bar-fill', 1200, 'accent');
+
+  try {
+    const users = await grist.docApi.fetchTable('User');
+    allUsers = tableToObjects(users);
+    const found = allUsers.find(
+      u => u.username === username && u.password === password
+    );
+
+    if (found) {
+      session = { username: found.username, role: found.role };
+      sessionStorage.setItem('sibukti_session', JSON.stringify(session));
+      await sleep(400); // tunggu bar selesai
+      loginSuccess();
+    } else {
+      errEl.textContent = 'Username atau password salah.';
+      errEl.classList.add('visible');
+      resetLoadingBar('login-bar-wrap', 'login-bar-fill');
+      btn.disabled = false;
+      btn.textContent = 'Masuk';
+    }
+  } catch (err) {
+    errEl.textContent = _inGrist
+      ? 'Gagal terhubung ke Grist. Coba refresh.'
+      : 'Widget harus dibuka di dalam Grist, bukan langsung di browser.';
+    errEl.classList.add('visible');
+    resetLoadingBar('login-bar-wrap', 'login-bar-fill');
+    btn.disabled = false;
+    btn.textContent = 'Masuk';
+  }
+}
+
+// Fade-out login screen lalu panggil launchApp setelah animasi selesai
+function loginSuccess() {
+  document.getElementById('login-screen').classList.add('fade-out');
+  setTimeout(launchApp, 400);
+}
+
+// Inisialisasi sidebar dengan info user, tampilkan app, dan navigasi ke Dashboard
+function launchApp() {
+  document.getElementById('login-screen').style.display = 'none';
+
+  // Update sidebar
+  const initials = session.username.slice(0, 2).toUpperCase();
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('sidebar-username').textContent = session.username;
+  document.getElementById('sidebar-role').textContent = session.role.toUpperCase();
+
+  // Tampilkan menu admin jika role = admin
+  if (session.role === 'admin') {
+    document.querySelectorAll('.nav-admin').forEach(el => el.style.display = 'flex');
+  }
+
+  document.getElementById('app').classList.add('visible');
+  showPage('dashboard', document.querySelector('.nav-item[data-page="dashboard"]'));
+}
+
+// Hapus session, reset UI, dan kembali ke halaman login
+function doLogout() {
+  sessionStorage.removeItem('sibukti_session');
+  session = null;
+  document.getElementById('app').classList.remove('visible');
+  document.querySelectorAll('.nav-admin').forEach(el => el.style.display = 'none');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').classList.remove('visible');
+  document.getElementById('btn-login').disabled = false;
+  document.getElementById('btn-login').textContent = 'Masuk';
+  showLoginScreen();
+  showToast('Anda telah keluar.', 'info');
+}
+
+/* ════════════════════════════════════════
+   ROUTING
+════════════════════════════════════════ */
+// Aktifkan halaman berdasarkan id, update state aktif sidebar, panggil load* terkait
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+
+  if (navEl) {
+    navEl.classList.add('active');
+  } else {
+    const match = document.querySelector(`.nav-item[data-page="${id}"]`);
+    if (match) match.classList.add('active');
+  }
+
+  if (id === 'dashboard')    loadDashboard();
+  if (id === 'perkara')      loadPerkara();
+  if (id === 'barang-bukti') loadBarangBukti();
+  if (id === 'cetak-qr')     loadCetakQR();
+  if (id === 'user')         loadUser();
+  if (id === 'log')          loadLog();
+  // detail-perkara tidak ada di sidebar — highlight menu Perkara saat di detail
+  if (id === 'detail-perkara') {
+    document.querySelector('.nav-item[data-page="perkara"]')?.classList.add('active');
+  }
+}
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+// Tampilkan notifikasi toast sementara di sudut kanan bawah
+function showToast(msg, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type] || 'ℹ'}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+/* ════════════════════════════════════════
+   LOADING BAR (simulasi)
+════════════════════════════════════════ */
+// Mulai animasi loading bar dua fase (cepat→lambat); `type='delete'` untuk warna merah
+function simulateLoadingBar(wrapId, fillId, duration = 1500, type = 'accent') {
+  const wrap = document.getElementById(wrapId);
+  const fill = document.getElementById(fillId);
+  if (!wrap || !fill) return;
+
+  wrap.classList.add('visible');
+  fill.classList.remove('done', 'delete');
+  if (type === 'delete') fill.classList.add('delete');
+  fill.style.width = '0%';
+
+  let pct = 0;
+  const phases = [
+    { target: 40, speed: duration * 0.25 },
+    { target: 85, speed: duration * 0.65 },
+  ];
+
+  let phaseIdx = 0;
+  const tick = () => {
+    if (phaseIdx >= phases.length) return;
+    const { target, speed } = phases[phaseIdx];
+    const step = (target - pct) / (speed / 30);
+    pct = Math.min(pct + step, target);
+    fill.style.width = pct + '%';
+    if (pct >= target) phaseIdx++;
+    if (phaseIdx < phases.length) setTimeout(tick, 30);
+  };
+  tick();
+}
+
+// Lompat ke 100%, ubah warna ke hijau, lalu fade-out bar setelah 900ms
+function finishLoadingBar(wrapId, fillId) {
+  const wrap = document.getElementById(wrapId);
+  const fill = document.getElementById(fillId);
+  if (!wrap || !fill) return;
+  fill.style.width = '100%';
+  fill.classList.add('done');
+  setTimeout(() => {
+    wrap.classList.remove('visible');
+    fill.style.width = '0%';
+    fill.classList.remove('done', 'delete');
+  }, 900);
+}
+
+// Sembunyikan dan reset bar ke nol (dipakai saat operasi gagal)
+function resetLoadingBar(wrapId, fillId) {
+  const wrap = document.getElementById(wrapId);
+  const fill = document.getElementById(fillId);
+  if (!wrap || !fill) return;
+  wrap.classList.remove('visible');
+  fill.style.width = '0%';
+  fill.classList.remove('done', 'delete');
+}
+
+/* ════════════════════════════════════════
+   UTILITAS
+════════════════════════════════════════ */
+// Konversi respons kolumnar Grist (tiap field = array) menjadi array of objects
+function tableToObjects(tableData) {
+  const keys = Object.keys(tableData);
+  if (!keys.length) return [];
+  const len = tableData[keys[0]].length;
+  const result = [];
+  for (let i = 0; i < len; i++) {
+    const obj = {};
+    keys.forEach(k => obj[k] = tableData[k][i]);
+    result.push(obj);
+  }
+  return result;
+}
+
+// Promise-based delay untuk menunggu animasi sebelum navigasi
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Tulis satu baris ke tabel LogAktivitas; gagal diam-diam agar tidak blokir UI
+async function logActivity(aksi) {
+  if (!session) return;
+  try {
+    await grist.docApi.applyUserActions([['AddRecord', 'LogAktivitas', null, {
+      aksi,
+      petugas: session.username,
+      tgl: new Date().toISOString(),
+    }]]);
+  } catch (e) {
+    console.warn('Log gagal:', e);
+  }
+}
+
+/* ════════════════════════════════════════
+   MODAL UTILITIES
+════════════════════════════════════════ */
+// Tampilkan modal overlay dengan class 'open'
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+// Sembunyikan modal overlay
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+/* ════════════════════════════════════════
+   PERKARA
+════════════════════════════════════════ */
+let _perkaraData = []; // cache lokal semua record Perkara
+
+// Ambil semua perkara dari Grist dan render ke tabel
+async function loadPerkara() {
+  try {
+    const raw = await grist.docApi.fetchTable('Perkara');
+    _perkaraData = tableToObjects(raw);
+    renderPerkara(_perkaraData);
+  } catch(e) {
+    showToast('Gagal memuat data perkara.', 'error');
+  }
+}
+
+// Render ulang tabel perkara ke DOM berdasarkan data yang diberikan
+function renderPerkara(data) {
+  const tbody = document.getElementById('perkara-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="dash-empty">Belum ada data perkara.</td></tr>`;
+    return;
+  }
+  const isAdmin = session && session.role === 'admin';
+  tbody.innerHTML = data.map(p => {
+    const tgl    = p.tgl_masuk ? formatDate(p.tgl_masuk) : '—';
+    // parseFotoIds menangani array Grist ['L', id1, ...] dengan benar
+    const hasDok = parseFotoIds(p.dokumen).length > 0;
+    return `<tr onclick="openDetailPerkara(${p.id})">
+      <td class="mono-acc">${p.no_perkara || '—'}</td>
+      <td style="font-weight:500">${p.terdakwa || '—'}</td>
+      <td style="color:var(--text-dark-2)">${p.penitip || '—'}</td>
+      <td class="mono-sm">${tgl}</td>
+      <td><span class="badge ${hasDok ? 'badge-ada' : 'badge-belum'}">${hasDok ? 'Ada' : 'Belum'}</span></td>
+      <td onclick="event.stopPropagation()">
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="openModalPerkara(${p.id})">Edit</button>
+          ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="hapusPerkara(${p.id},this)">Hapus</button>` : ''}
+        </div>
+        <div class="row-delete-bar" id="del-bar-p-${p.id}"></div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Filter tabel perkara berdasarkan input search secara real-time
+function filterPerkara() {
+  const q = document.getElementById('perkara-search').value.toLowerCase();
+  renderPerkara(_perkaraData.filter(p =>
+    (p.no_perkara||'').toLowerCase().includes(q) ||
+    (p.terdakwa||'').toLowerCase().includes(q) ||
+    (p.penitip||'').toLowerCase().includes(q)
+  ));
+}
+
+// Buka modal tambah/edit perkara; isi form jika rowId ada (mode edit)
+function openModalPerkara(rowId) {
+  document.getElementById('modal-perkara-title').textContent = rowId ? 'Edit Perkara' : 'Tambah Perkara';
+  document.getElementById('mp-rowid').value = rowId || '';
+  if (rowId) {
+    const p = _perkaraData.find(x => x.id === rowId);
+    if (p) {
+      document.getElementById('mp-no').value      = p.no_perkara || '';
+      document.getElementById('mp-terdakwa').value = p.terdakwa || '';
+      document.getElementById('mp-penitip').value  = p.penitip || '';
+      document.getElementById('mp-tgl').value      = p.tgl_masuk ? epochToDateInput(p.tgl_masuk) : '';
+    }
+  } else {
+    document.getElementById('mp-no').value = '';
+    document.getElementById('mp-terdakwa').value = '';
+    document.getElementById('mp-penitip').value = '';
+    document.getElementById('mp-tgl').value = '';
+  }
+  openModal('modal-perkara');
+}
+
+// Simpan perkara baru atau update record yang ada ke Grist
+async function simpanPerkara() {
+  const rowId  = document.getElementById('mp-rowid').value;
+  const no     = document.getElementById('mp-no').value.trim();
+  const terdakwa = document.getElementById('mp-terdakwa').value.trim();
+  const penitip  = document.getElementById('mp-penitip').value.trim();
+  const tglVal   = document.getElementById('mp-tgl').value;
+
+  if (!no || !terdakwa || !penitip || !tglVal) {
+    showToast('Semua field wajib diisi.', 'warning'); return;
+  }
+
+  const btn = document.getElementById('btn-simpan-perkara');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  const tglEpoch = Math.floor(new Date(tglVal).getTime() / 1000);
+  try {
+    if (rowId) {
+      await grist.docApi.applyUserActions([['UpdateRecord','Perkara', parseInt(rowId), {
+        no_perkara: no, terdakwa, penitip, tgl_masuk: tglEpoch
+      }]]);
+      await logActivity(`Data perkara ${no} diperbarui`);
+      showToast('Perkara berhasil diperbarui.', 'success');
+    } else {
+      await grist.docApi.applyUserActions([['AddRecord','Perkara', null, {
+        no_perkara: no, terdakwa, penitip, tgl_masuk: tglEpoch
+      }]]);
+      await logActivity(`Perkara ${no} ditambahkan`);
+      showToast('Perkara berhasil ditambahkan.', 'success');
+    }
+    closeModal('modal-perkara');
+    await loadPerkara();
+  } catch(e) {
+    showToast('Gagal menyimpan perkara.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+// Hapus perkara beserta seluruh BB-nya (cascade) dengan konfirmasi dan animasi bar
+async function hapusPerkara(rowId, btnEl) {
+  const p = _perkaraData.find(x => x.id === rowId);
+  if (!p) return;
+  if (!confirm(`Hapus perkara "${p.no_perkara}" beserta semua Barang Bukti-nya?\nAksi ini tidak bisa dibatalkan.`)) return;
+
+  const row = btnEl.closest('tr');
+  row.classList.add('deleting');
+  const bar = document.getElementById('del-bar-p-' + rowId);
+
+  // Animasi loading bar hapus
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 3, 90);
+    if (bar) bar.style.width = pct + '%';
+  }, 40);
+
+  try {
+    // Cascade: hapus BB terkait dulu
+    const rawBB = await grist.docApi.fetchTable('BarangBukti');
+    const allBB = tableToObjects(rawBB);
+    const relBB = allBB.filter(b => b.perkara === rowId);
+    for (const b of relBB) {
+      await grist.docApi.applyUserActions([['RemoveRecord','BarangBukti', b.id]]);
+    }
+    await grist.docApi.applyUserActions([['RemoveRecord','Perkara', rowId]]);
+    clearInterval(iv);
+    if (bar) bar.style.width = '100%';
+    await logActivity(`Perkara ${p.no_perkara} dihapus beserta ${relBB.length} BB`);
+    showToast(`Perkara ${p.no_perkara} dihapus.`, 'success');
+    setTimeout(async () => { await loadPerkara(); }, 400);
+  } catch(e) {
+    clearInterval(iv);
+    row.classList.remove('deleting');
+    if (bar) bar.style.width = '0%';
+    showToast('Gagal menghapus perkara.', 'error');
+    // Refresh agar cache sinkron jika cascade delete sebagian berhasil
+    await loadPerkara();
+  }
+}
+
+/* ════════════════════════════════════════
+   DETAIL PERKARA
+════════════════════════════════════════ */
+let _detailPerkaraId = null; // ID perkara yang sedang dibuka di halaman detail
+
+// Isi header + info grid + daftar BB, lalu navigasi ke halaman detail-perkara
+async function openDetailPerkara(rowId) {
+  _detailPerkaraId = rowId;
+  const p = _perkaraData.find(x => x.id === rowId);
+  if (!p) return;
+
+  document.getElementById('detail-perkara-no').textContent = p.no_perkara || '—';
+  document.getElementById('detail-perkara-terdakwa').textContent = `Terdakwa: ${p.terdakwa || '—'}`;
+
+  const hasDok = parseFotoIds(p.dokumen).length > 0;
+  document.getElementById('detail-perkara-info').innerHTML = `
+    <div class="info-item"><div class="info-item-label">No. Perkara</div><div class="info-item-val mono-acc">${p.no_perkara||'—'}</div></div>
+    <div class="info-item"><div class="info-item-label">Terdakwa</div><div class="info-item-val">${p.terdakwa||'—'}</div></div>
+    <div class="info-item"><div class="info-item-label">Penitip</div><div class="info-item-val">${p.penitip||'—'}</div></div>
+    <div class="info-item"><div class="info-item-label">Tanggal Masuk</div><div class="info-item-val">${p.tgl_masuk ? formatDate(p.tgl_masuk) : '—'}</div></div>
+    <div class="info-item" style="grid-column:1/-1">
+      <div class="info-item-label">Dokumen Perkara</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+        <span class="badge ${hasDok ? 'badge-ada':'badge-belum'}">${hasDok?'Sudah Diupload':'Belum Ada Dokumen'}</span>
+        <label class="upload-btn">
+          📎 ${hasDok ? 'Ganti Dokumen' : 'Upload PDF'}
+          <input type="file" class="upload-input" accept="application/pdf"
+            onchange="uploadDocPerkara(${rowId}, this.files, this)">
+        </label>
+      </div>
+      <div class="loading-bar-wrap" id="dok-bar-wrap-${rowId}" style="margin-top:6px">
+        <div class="loading-bar-fill" id="dok-bar-fill-${rowId}"></div>
+      </div>
+      <div class="loading-bar-label" id="dok-bar-label-${rowId}"></div>
+    </div>`;
+
+  const isAdmin = session && session.role === 'admin';
+  document.getElementById('detail-perkara-actions').innerHTML = isAdmin
+    ? `<button class="btn btn-outline btn-sm" onclick="openModalPerkara(${rowId})">Edit Perkara</button>`
+    : '';
+
+  await loadDetailBB(rowId);
+  showPage('detail-perkara', null);
+}
+
+// Ambil BB yang berelasi dengan perkaraId dan render ke tabel detail
+async function loadDetailBB(perkaraId) {
+  const tbody = document.getElementById('detail-bb-tbody');
+  tbody.innerHTML = `<tr><td colspan="7" class="dash-empty">Memuat...</td></tr>`;
+  try {
+    const raw = await grist.docApi.fetchTable('BarangBukti');
+    const allBB = tableToObjects(raw);
+    const bbList = allBB.filter(b => b.perkara === perkaraId);
+    if (!bbList.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="dash-empty">Belum ada barang bukti.</td></tr>`;
+      return;
+    }
+    const isAdmin = session && session.role === 'admin';
+    tbody.innerHTML = bbList.map(b => {
+      const tgl = b.tgl_masuk ? formatDate(b.tgl_masuk) : '—';
+      const hasQR = b.qr_url && b.qr_url.trim() !== '';
+      return `<tr>
+        <td class="mono-sm">${String(b.id_bb||b.id).padStart(4,'0')}</td>
+        <td style="font-weight:500">${b.nama||'—'}</td>
+        <td class="mono-sm">${b.jumlah||'—'} ${b.satuan||''}</td>
+        <td class="mono-sm">${tgl}</td>
+        <td onclick="event.stopPropagation()">
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+            ${parseFotoIds(b.foto).length > 0
+              ? `<button class="btn btn-outline btn-sm" onclick="viewFotoBB(${b.id})">Lihat</button>`
+              : ''}
+            <label class="btn btn-accent btn-sm" style="cursor:pointer;margin:0">
+              +Foto
+              <input type="file" accept="image/*" multiple style="display:none"
+                onchange="uploadFotoBB(${b.id},this.files,this)">
+            </label>
+          </div>
+          <div class="loading-bar-wrap" id="foto-bar-wrap-${b.id}" style="margin-top:4px">
+            <div class="loading-bar-fill" id="foto-bar-fill-${b.id}"></div>
+          </div>
+          <div class="loading-bar-label" id="foto-bar-label-${b.id}"></div>
+        </td>
+        <td><span class="badge ${hasQR ? 'badge-ada':'badge-belum'}">${hasQR ? 'Siap':'Belum'}</span></td>
+        <td onclick="event.stopPropagation()">
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-outline btn-sm" onclick="openModalBBEdit(${b.id})">Edit</button>
+            ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="hapusBB(${b.id},this)">Hapus</button>` : ''}
+          </div>
+          <div class="row-delete-bar" id="del-bar-bb-${b.id}"></div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="dash-empty">Gagal memuat BB.</td></tr>`;
+  }
+}
+
+// Buka modal photo viewer — modal langsung terbuka, img load paralel via browser
+async function viewFotoBB(bbId) {
+  try {
+    let bb = _bbData.find(x => x.id === bbId);
+    if (!bb) {
+      const raw = await grist.docApi.fetchTable('BarangBukti');
+      _bbData = tableToObjects(raw);
+      bb = _bbData.find(x => x.id === bbId);
+    }
+    if (!bb) { showToast('Data BB tidak ditemukan.', 'error'); return; }
+
+    const fotoIds = parseFotoIds(bb.foto);
+    if (!fotoIds.length) { showToast('Belum ada foto.', 'warning'); return; }
+
+    const tokenInfo = await grist.docApi.getAccessToken({ readOnly: false });
+    // Gunakan URL langsung ke Grist dengan ?auth=token — tidak perlu proxy untuk <img>
+    const imgBase = `${tokenInfo.baseUrl}/attachments`;
+    const authToken = encodeURIComponent(tokenInfo.token);
+
+    document.getElementById('mbd-title').textContent =
+      `Foto BB #${String(bb.id_bb||bb.id).padStart(4,'0')} — ${bb.nama||''}`;
+    document.getElementById('mbd-body').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:12px;max-height:65vh;overflow-y:auto;padding:4px 2px">
+        ${fotoIds.map((id, i) => `
+          <div style="text-align:center">
+            <div style="background:#f5f5f5;border-radius:6px;min-height:60px;display:flex;
+                        align-items:center;justify-content:center" id="ph-${id}">
+              <span style="color:#aaa;font-size:11px;font-family:var(--mono)">Memuat foto ${i+1}...</span>
+            </div>
+            <img src="${imgBase}/${id}/download?auth=${authToken}"
+                 style="max-width:100%;max-height:420px;border-radius:6px;object-fit:contain;display:none"
+                 onload="document.getElementById('ph-${id}').style.display='none';this.style.display='block'"
+                 onerror="this._retried?document.getElementById('ph-${id}').innerHTML='<span style=color:#e63946;font-size:11px>Gagal memuat foto ${i+1}</span>':(this._retried=true,this.src=this.src)">
+            <div style="font-size:10px;color:#aaa;margin-top:4px;font-family:var(--mono)">${i+1} / ${fotoIds.length}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn btn-outline" onclick="closeModal('modal-bb-detail')" style="margin-top:14px">Tutup</button>
+    `;
+    openModal('modal-bb-detail');
+  } catch(e) {
+    console.error('[viewFotoBB]', e);
+    showToast('Gagal membuka foto: ' + (e.message || 'error'), 'error', 5000);
+  }
+}
+
+// Buka modal tambah BB dengan pre-select perkara yang sedang dibuka
+async function openModalBBFromDetail() {
+  if (_detailPerkaraId) await openModalBB(_detailPerkaraId);
+}
+
+// Upload file PDF dokumen perkara ke Grist, simpan ke kolom dokumen, refresh detail
+async function uploadDocPerkara(perkaraId, files, inputEl) {
+  if (!files || !files.length) return;
+  const wrapId  = `dok-bar-wrap-${perkaraId}`;
+  const fillId  = `dok-bar-fill-${perkaraId}`;
+  const labelId = `dok-bar-label-${perkaraId}`;
+  const labelEl = document.getElementById(labelId);
+
+  if (labelEl) { labelEl.textContent = '0%'; labelEl.classList.add('visible'); }
+  simulateLoadingBar(wrapId, fillId, 2500, 'accent');
+
+  try {
+    const tokenInfo = await grist.docApi.getAccessToken({ readOnly: false });
+    const file = files[0];
+    const fd   = new FormData();
+    fd.append('upload', file, file.name);
+    fd.append('baseUrl', tokenInfo.baseUrl);
+    const res = await fetch(`${GRIST_PROXY_URL}/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[uploadDocPerkara] HTTP', res.status, body);
+      throw new Error(`HTTP ${res.status} — ${body || 'server error'}`);
+    }
+    const [attachId] = await res.json();
+    if (!attachId) throw new Error('Server tidak mengembalikan attachment ID');
+
+    await grist.docApi.applyUserActions([['UpdateRecord', 'Perkara', perkaraId, {
+      dokumen: ['L', attachId],
+    }]]);
+
+    finishLoadingBar(wrapId, fillId);
+    if (labelEl) {
+      labelEl.textContent = '✓ Selesai';
+      setTimeout(() => labelEl.classList.remove('visible'), 1200);
+    }
+
+    const p = _perkaraData.find(x => x.id === perkaraId);
+    await logActivity(`Dokumen diupload untuk perkara ${p?.no_perkara || perkaraId}`);
+    showToast('Dokumen perkara berhasil diupload.', 'success');
+
+    // Perbarui cache lokal lalu refresh tampilan detail
+    if (p) p.dokumen = ['L', attachId];
+    await openDetailPerkara(perkaraId);
+
+  } catch (e) {
+    resetLoadingBar(wrapId, fillId);
+    if (labelEl) labelEl.classList.remove('visible');
+    console.error('[uploadDocPerkara] error:', e);
+    showToast('Gagal upload dokumen: ' + (e.message || 'unknown error'), 'error', 6000);
+  }
+  if (inputEl) inputEl.value = '';
+}
+
+/* ════════════════════════════════════════
+   FORMAT TANGGAL
+════════════════════════════════════════ */
+// Format epoch detik Grist → tampilan tanggal lokal (id-ID)
+function formatDate(val) {
+  if (!val) return '—';
+  try {
+    const d = new Date(val * 1000);
+    return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+  } catch { return '—'; }
+}
+// Konversi epoch detik Grist ke string YYYY-MM-DD untuk input[type=date]
+function epochToDateInput(epoch) {
+  const d = new Date(epoch * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+/* ════════════════════════════════════════
+   BARANG BUKTI — CRUD & Upload Foto
+════════════════════════════════════════ */
+let _bbData       = []; // cache lokal semua record BarangBukti
+let _bbPerkaraList = []; // cache daftar perkara untuk filter + peta nama
+
+// Ambil semua BB + daftar perkara dari Grist, isi dropdown filter, render list
+async function loadBarangBukti() {
+  try {
+    const [rawBB, rawP] = await Promise.all([
+      grist.docApi.fetchTable('BarangBukti'),
+      grist.docApi.fetchTable('Perkara'),
+    ]);
+    _bbData        = tableToObjects(rawBB);
+    const perkaraList = tableToObjects(rawP);
+    _bbPerkaraList = perkaraList; // simpan untuk dipakai filterBB
+
+    // Isi dropdown filter perkara (hanya jika halaman BB sedang ditampilkan)
+    const sel = document.getElementById('bb-filter-perkara');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Semua Perkara</option>' +
+        perkaraList.map(p => `<option value="${p.id}">${p.no_perkara}</option>`).join('');
+      sel.value = cur;
+      renderBBList(_bbData, perkaraList);
+    }
+  } catch(e) {
+    const container = document.getElementById('bb-list-container');
+    if (container) container.innerHTML =
+      `<div class="dash-empty">Gagal memuat data.</div>`;
+  }
+}
+
+// Render ulang list BB ke DOM sebagai kartu berdasarkan data yang diberikan
+function renderBBList(data, perkaraList) {
+  const container = document.getElementById('bb-list-container');
+  if (!data.length) {
+    container.innerHTML = `<div class="dash-empty">Belum ada barang bukti.</div>`;
+    return;
+  }
+
+  // Buat map id→no_perkara dari daftar yang tersedia; jika null gunakan map kosong
+  const pMap = {};
+  if (perkaraList) perkaraList.forEach(p => pMap[p.id] = p.no_perkara);
+
+  const isAdmin = session && session.role === 'admin';
+  container.innerHTML = data.map(b => {
+    const noPerkara = pMap[b.perkara] || `#${b.perkara}`;
+    const tgl = b.tgl_masuk ? formatDate(b.tgl_masuk) : '—';
+    const fotoArr = parseFotoIds(b.foto);
+    const fotoCount = fotoArr.length;
+    const hasQR = b.qr_url && b.qr_url.trim() !== '';
+    const idBB = String(b.id_bb || b.id).padStart(4,'0');
+
+    return `<div class="bb-card" onclick="openDetailBB(${b.id})">
+      <div class="bb-icon">📦</div>
+      <div class="bb-info">
+        <div class="bb-name">${b.nama || '—'}</div>
+        <div class="bb-meta">
+          <span>📅 ${tgl}</span>
+          <span>📦 ${b.jumlah||'?'} ${b.satuan||''}</span>
+          <span>No.BB: <b>${idBB}</b></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0" onclick="event.stopPropagation()">
+        <span class="bb-perkara-chip">${noPerkara}</span>
+        <span class="badge ${hasQR?'badge-ada':'badge-belum'}">${hasQR?'QR ✓':'No QR'}</span>
+        <div class="bb-upload-wrap">
+          <div style="display:flex;gap:4px;align-items:center">
+            ${fotoCount > 0 ? `
+            <button onclick="viewFotoBB(${b.id})"
+              style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;
+                     border:1px solid var(--accent);background:transparent;color:var(--accent);
+                     font-size:11px;font-family:var(--mono);cursor:pointer;transition:background .15s"
+              onmouseover="this.style.background='rgba(0,180,216,.08)'"
+              onmouseout="this.style.background='transparent'">
+              🖼 ${fotoCount} Foto
+            </button>` : ''}
+            <label style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;border-radius:4px;
+                          background:var(--accent);color:#fff;font-size:11px;font-family:var(--mono);
+                          cursor:pointer;transition:filter .15s"
+              onmouseover="this.style.filter='brightness(1.1)'"
+              onmouseout="this.style.filter='none'">
+              + Foto
+              <input type="file" accept="image/*" multiple style="display:none"
+                onchange="uploadFotoBB(${b.id}, this.files, this)">
+            </label>
+          </div>
+          <div class="loading-bar-wrap" id="foto-bar-wrap-${b.id}" style="margin-top:4px">
+            <div class="loading-bar-fill" id="foto-bar-fill-${b.id}"></div>
+          </div>
+          <div class="loading-bar-label" id="foto-bar-label-${b.id}"></div>
+        </div>
+        ${isAdmin ? `
+        <button class="btn btn-outline btn-sm" onclick="openModalBBEdit(${b.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="hapusBB(${b.id},this)">Hapus</button>
+        ` : ''}
+      </div>
+    </div>
+    <div class="row-delete-bar" id="del-bar-bb-${b.id}" style="margin:0 2px 2px"></div>`;
+  }).join('');
+}
+
+// Filter list BB berdasarkan search teks dan dropdown perkara
+function filterBB() {
+  const q  = document.getElementById('bb-search').value.toLowerCase();
+  const pf = document.getElementById('bb-filter-perkara').value;
+  const filtered = _bbData.filter(b => {
+    const matchP = !pf || String(b.perkara) === pf;
+    const matchQ = !q || (b.nama||'').toLowerCase().includes(q);
+    return matchP && matchQ;
+  });
+  // Gunakan cache perkara agar chip nama perkara tetap tampil saat filter
+  renderBBList(filtered, _bbPerkaraList);
+}
+
+// Ekstrak array ID attachment foto dari nilai kolom Grist (format list atau null)
+function parseFotoIds(val) {
+  if (!val || val === 'null') return [];
+  if (Array.isArray(val)) return val.filter(x => typeof x === 'number');
+  return [];
+}
+
+// Hitung id_bb berikutnya: max id_bb yang ada + 1 (bukan row ID Grist)
+async function autoNextIdBB() {
+  try {
+    const raw = await grist.docApi.fetchTable('BarangBukti');
+    const list = tableToObjects(raw);
+    if (!list.length) return 1;
+    return Math.max(...list.map(b => b.id_bb || 0)) + 1;
+  } catch { return 1; }
+}
+
+// Buka modal tambah BB; pre-select perkara jika perkaraId diberikan
+async function openModalBB(perkaraId) {
+  document.getElementById('modal-bb-title').textContent = 'Tambah Barang Bukti';
+  document.getElementById('mb-rowid').value = '';
+  document.getElementById('mb-nama').value = '';
+  document.getElementById('mb-jumlah').value = '';
+  document.getElementById('mb-satuan').value = '';
+  document.getElementById('mb-tgl').value = '';
+  await populatePerkara('mb-perkara', perkaraId);
+  openModal('modal-bb');
+}
+
+// Buka modal edit BB dengan form yang sudah terisi data BB yang dipilih
+async function openModalBBEdit(bbId) {
+  let b = _bbData.find(x => x.id === bbId);
+  if (!b) {
+    // Cache kosong (user belum buka halaman BB) — fetch langsung dari Grist
+    try {
+      const raw = await grist.docApi.fetchTable('BarangBukti');
+      _bbData = tableToObjects(raw);
+      b = _bbData.find(x => x.id === bbId);
+    } catch { /* b tetap null, fall through */ }
+  }
+  if (!b) return;
+  document.getElementById('modal-bb-title').textContent = 'Edit Barang Bukti';
+  document.getElementById('mb-rowid').value = bbId;
+  document.getElementById('mb-nama').value   = b.nama || '';
+  document.getElementById('mb-jumlah').value = b.jumlah || '';
+  document.getElementById('mb-satuan').value = b.satuan || '';
+  document.getElementById('mb-tgl').value    = b.tgl_masuk ? epochToDateInput(b.tgl_masuk) : '';
+  await populatePerkara('mb-perkara', b.perkara);
+  openModal('modal-bb');
+}
+
+// Isi dropdown perkara di modal BB; tandai selectedId sebagai selected
+async function populatePerkara(selId, selectedId) {
+  const sel = document.getElementById(selId);
+  try {
+    const raw = await grist.docApi.fetchTable('Perkara');
+    const list = tableToObjects(raw);
+    sel.innerHTML = list.map(p =>
+      `<option value="${p.id}" ${p.id == selectedId ? 'selected' : ''}>${p.no_perkara} — ${p.terdakwa}</option>`
+    ).join('');
+  } catch { sel.innerHTML = '<option>Gagal memuat perkara</option>'; }
+}
+
+// Simpan BB baru atau update record yang ada ke Grist
+async function simpanBB() {
+  const rowId    = document.getElementById('mb-rowid').value;
+  const perkaraId = parseInt(document.getElementById('mb-perkara').value);
+  const nama     = document.getElementById('mb-nama').value.trim();
+  const jumlah   = parseFloat(document.getElementById('mb-jumlah').value);
+  const satuan   = document.getElementById('mb-satuan').value.trim();
+  const tglVal   = document.getElementById('mb-tgl').value;
+
+  if (!nama || !satuan || !tglVal || !perkaraId || isNaN(jumlah)) {
+    showToast('Semua field wajib diisi.', 'warning'); return;
+  }
+
+  const btn = document.getElementById('btn-simpan-bb');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const tglEpoch = Math.floor(new Date(tglVal).getTime() / 1000);
+
+  try {
+    if (rowId) {
+      await grist.docApi.applyUserActions([['UpdateRecord','BarangBukti', parseInt(rowId), {
+        perkara: perkaraId, nama, jumlah, satuan, tgl_masuk: tglEpoch
+      }]]);
+      await logActivity(`Data BB ${nama} diperbarui`);
+      showToast('Barang Bukti diperbarui.', 'success');
+    } else {
+      const nextId  = await autoNextIdBB();
+      const pObj    = _perkaraData.find(x => x.id === perkaraId) || _bbPerkaraList.find(x => x.id === perkaraId);
+      const noPerkara = pObj ? pObj.no_perkara : `#${perkaraId}`;
+      await grist.docApi.applyUserActions([['AddRecord','BarangBukti', null, {
+        id_bb: nextId, perkara: perkaraId, nama, jumlah, satuan, tgl_masuk: tglEpoch
+      }]]);
+      await logActivity(`BB #${String(nextId).padStart(4,'0')} ${nama} ditambahkan ke perkara ${noPerkara}`);
+      showToast('Barang Bukti ditambahkan.', 'success');
+    }
+    closeModal('modal-bb');
+    await loadBarangBukti();
+    // Refresh detail perkara jika sedang di halaman tersebut
+    if (_detailPerkaraId) await loadDetailBB(_detailPerkaraId);
+  } catch(e) {
+    showToast('Gagal menyimpan BB.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+// Hapus BB dengan konfirmasi, animasi bar merah, lalu refresh list dan detail
+async function hapusBB(bbId, btnEl) {
+  let b = _bbData.find(x => x.id === bbId);
+  if (!b) {
+    // Cache kosong (user belum buka halaman BB) — fetch langsung dari Grist
+    try {
+      const raw = await grist.docApi.fetchTable('BarangBukti');
+      _bbData = tableToObjects(raw);
+      b = _bbData.find(x => x.id === bbId);
+    } catch { /* b tetap null, fall through */ }
+  }
+  if (!b) return;
+  if (!confirm(`Hapus barang bukti "${b.nama}"?\nAksi ini tidak bisa dibatalkan.`)) return;
+
+  const wrap = btnEl ? btnEl.closest('.bb-card, tr') : null;
+  if (wrap) wrap.style.opacity = '.5';
+  const bar = document.getElementById('del-bar-bb-' + bbId);
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 4, 90);
+    if (bar) bar.style.width = pct + '%';
+  }, 40);
+
+  try {
+    await grist.docApi.applyUserActions([['RemoveRecord','BarangBukti', bbId]]);
+    clearInterval(iv);
+    if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--danger)'; }
+    await logActivity(`BB #${String(b.id_bb||b.id).padStart(4,'0')} ${b.nama} dihapus`);
+    showToast(`BB "${b.nama}" dihapus.`, 'success');
+    setTimeout(async () => {
+      await loadBarangBukti();
+      if (_detailPerkaraId) await loadDetailBB(_detailPerkaraId);
+    }, 400);
+  } catch(e) {
+    clearInterval(iv);
+    if (wrap) wrap.style.opacity = '1';
+    if (bar) bar.style.width = '0';
+    showToast('Gagal menghapus BB.', 'error');
+  }
+}
+
+// Upload satu atau lebih foto ke Grist Attachments, update kolom foto BB, trigger PDF
+async function uploadFotoBB(bbId, files, inputEl) {
+  if (!files || !files.length) return;
+  const wrapId  = `foto-bar-wrap-${bbId}`;
+  const fillId  = `foto-bar-fill-${bbId}`;
+  const labelId = `foto-bar-label-${bbId}`;
+  const statusEl = document.getElementById('bb-upload-status');
+
+  const labelEl = document.getElementById(labelId);
+  if (labelEl) { labelEl.textContent = '0%'; labelEl.classList.add('visible'); }
+  simulateLoadingBar(wrapId, fillId, 2000, 'accent');
+
+  try {
+    const tokenInfo = await grist.docApi.getAccessToken({ readOnly: false });
+    const existBB = _bbData.find(b => b.id === bbId);
+    const existIds = parseFotoIds(existBB ? existBB.foto : null);
+    const newIds = [...existIds];
+
+    for (const file of files) {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append('upload', compressed, compressed.name || file.name);
+      fd.append('baseUrl', tokenInfo.baseUrl);
+      const res = await fetch(`${GRIST_PROXY_URL}/upload`, {
+        method: 'POST',
+        body: fd,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error('[uploadFotoBB] HTTP', res.status, body);
+        throw new Error(`HTTP ${res.status} — ${body || 'server error'}`);
+      }
+      const ids = await res.json();
+      newIds.push(...ids);
+    }
+
+    await grist.docApi.applyUserActions([['UpdateRecord','BarangBukti', bbId, {
+      foto: ['L', ...newIds]
+    }]]);
+
+    finishLoadingBar(wrapId, fillId);
+    const lEl = document.getElementById(labelId);
+    if (lEl) { lEl.textContent = '✓ Selesai'; setTimeout(() => lEl.classList.remove('visible'), 1200); }
+
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = `✓ ${files.length} foto diupload untuk BB #${String(existBB?.id_bb||bbId).padStart(4,'0')}`;
+      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+    }
+
+    await loadBarangBukti();
+    if (_detailPerkaraId) await loadDetailBB(_detailPerkaraId);
+
+    // Cek apakah dokumen perkara sudah ada → trigger PDF (Tahap 9)
+    if (existBB) checkAndGeneratePDF(bbId, existBB.perkara);
+
+  } catch(e) {
+    resetLoadingBar(wrapId, fillId);
+    const lElErr = document.getElementById(labelId);
+    if (lElErr) lElErr.classList.remove('visible');
+    console.error('[uploadFotoBB] error:', e);
+    showToast('Gagal upload foto: ' + (e.message || 'unknown error'), 'error', 6000);
+  }
+  if (inputEl) inputEl.value = '';
+}
+
+// Buka modal detail BB dengan info lengkap termasuk status foto dan QR
+async function openDetailBB(bbId) {
+  const b = _bbData.find(x => x.id === bbId);
+  if (!b) return;
+
+  // Cari nama perkara
+  let noPerkara = `#${b.perkara}`;
+  try {
+    const raw = await grist.docApi.fetchTable('Perkara');
+    const p = tableToObjects(raw).find(x => x.id === b.perkara);
+    if (p) noPerkara = p.no_perkara;
+  } catch {}
+
+  const fotoIds = parseFotoIds(b.foto);
+  const hasQR = b.qr_url && b.qr_url.trim() !== '';
+  document.getElementById('mbd-title').textContent = `Detail: BB #${String(b.id_bb||b.id).padStart(4,'0')}`;
+  document.getElementById('mbd-body').innerHTML = `
+    <div class="detail-field"><span class="detail-field-label">Nama BB</span><span class="detail-field-val">${b.nama||'—'}</span></div>
+    <div class="detail-field"><span class="detail-field-label">No. Perkara</span><span class="detail-field-val mono-acc">${noPerkara}</span></div>
+    <div class="detail-field"><span class="detail-field-label">Jumlah</span><span class="detail-field-val">${b.jumlah||'—'} ${b.satuan||''}</span></div>
+    <div class="detail-field"><span class="detail-field-label">Tgl Masuk</span><span class="detail-field-val">${b.tgl_masuk ? formatDate(b.tgl_masuk) : '—'}</span></div>
+    <div class="detail-field"><span class="detail-field-label">Foto</span><span class="detail-field-val">${fotoIds.length > 0 ? fotoIds.length+' foto terupload' : 'Belum ada foto'}</span></div>
+    <div class="detail-field"><span class="detail-field-label">QR Code</span><span class="detail-field-val">
+      ${hasQR ? `<a href="${b.qr_url}" target="_blank" style="color:var(--accent)">Lihat PDF ↗</a>` : 'Belum digenerate'}
+    </span></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('modal-bb-detail')">Tutup</button>
+      <button class="btn btn-accent btn-sm" onclick="closeModal('modal-bb-detail');showPage('cetak-qr',null)">Cetak QR</button>
+    </div>`;
+  openModal('modal-bb-detail');
+}
+
+/* ════════════════════════════════════════
+   PDF GENERATOR (Tahap 9)
+════════════════════════════════════════ */
+// Cek dokumen perkara, konversi foto ke PDF, merge, upload ke Grist, simpan qr_url
+async function checkAndGeneratePDF(bbId, perkaraId) {
+  try {
+    // Fetch data segar (setelah loadBarangBukti mungkin sudah terjadi)
+    const [rawBB, rawP] = await Promise.all([
+      grist.docApi.fetchTable('BarangBukti'),
+      grist.docApi.fetchTable('Perkara'),
+    ]);
+    const bb      = tableToObjects(rawBB).find(b => b.id === bbId);
+    const perkara = tableToObjects(rawP).find(p => p.id === perkaraId);
+    if (!bb || !perkara) return;
+
+    // Cek apakah dokumen perkara sudah ada
+    const dokIds   = parseFotoIds(perkara.dokumen);
+    const idBBEarly = String(bb.id_bb || bb.id).padStart(4, '0');
+    if (!dokIds.length) {
+      showToast('Dokumen perkara belum diupload — PDF gabungan tidak dibuat.', 'warning');
+      await logActivity(`Foto diupload untuk BB #${idBBEarly} ${bb.nama} (dokumen perkara belum ada)`);
+      return;
+    }
+
+    // Pastikan ada foto untuk digabung
+    const fotoIds = parseFotoIds(bb.foto);
+    if (!fotoIds.length) return;
+
+    // Tampilkan loading bar proses PDF (reuse bar slot milik BB ini)
+    const wrapId  = `foto-bar-wrap-${bbId}`;
+    const fillId  = `foto-bar-fill-${bbId}`;
+    const labelId = `foto-bar-label-${bbId}`;
+    const labelEl = document.getElementById(labelId);
+    if (labelEl) { labelEl.textContent = 'Memproses PDF...'; labelEl.classList.add('visible'); }
+    simulateLoadingBar(wrapId, fillId, 5000, 'accent');
+
+    const tokenInfo = await grist.docApi.getAccessToken({ readOnly: false });
+    const proxyBaseUrl = encodeURIComponent(tokenInfo.baseUrl);
+
+    // Fetch dokumen perkara (PDF bytes) via proxy
+    const dokRes = await fetch(`${GRIST_PROXY_URL}/download/${dokIds[0]}?baseUrl=${proxyBaseUrl}`);
+    if (!dokRes.ok) throw new Error('Gagal mengambil dokumen perkara');
+    const dokBytes = await dokRes.arrayBuffer();
+
+    // Konversi setiap foto ke halaman PDF via jsPDF
+    const { jsPDF }   = window.jspdf;
+    const fotoPdfList = [];
+    for (const fotoId of fotoIds) {
+      const res = await fetch(`${GRIST_PROXY_URL}/download/${fotoId}?baseUrl=${proxyBaseUrl}`);
+      if (!res.ok) continue;
+      const blob     = await res.blob();
+      const b64      = await blobToBase64(blob);
+      const imgEl    = await loadImage(b64);
+      const orient   = imgEl.naturalWidth > imgEl.naturalHeight ? 'landscape' : 'portrait';
+      const doc      = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4' });
+      const pw       = doc.internal.pageSize.getWidth();
+      const ph       = doc.internal.pageSize.getHeight();
+      const ratio    = Math.min(pw / imgEl.naturalWidth, ph / imgEl.naturalHeight);
+      const iw       = imgEl.naturalWidth  * ratio;
+      const ih       = imgEl.naturalHeight * ratio;
+      const imgType  = blob.type.includes('png') ? 'PNG' : 'JPEG';
+      doc.addImage(b64, imgType, (pw - iw) / 2, (ph - ih) / 2, iw, ih);
+      fotoPdfList.push(doc.output('arraybuffer'));
+    }
+
+    // Merge: dokumen PDF + semua halaman foto via pdf-lib
+    const { PDFDocument } = PDFLib;
+    const merged = await PDFDocument.load(dokBytes);
+    for (const pdfBytes of fotoPdfList) {
+      const src   = await PDFDocument.load(pdfBytes);
+      const pages = await merged.copyPages(src, src.getPageIndices());
+      pages.forEach(pg => merged.addPage(pg));
+    }
+    const mergedBytes = await merged.save();
+
+    // Upload PDF gabungan ke Grist Attachments via proxy
+    const idBBStr = String(bb.id_bb || bb.id).padStart(4, '0');
+    const fd      = new FormData();
+    fd.append('upload', new Blob([mergedBytes], { type: 'application/pdf' }), `BB_${idBBStr}_gabungan.pdf`);
+    fd.append('baseUrl', tokenInfo.baseUrl);
+    const upRes = await fetch(`${GRIST_PROXY_URL}/upload`, {
+      method: 'POST', body: fd,
+    });
+    if (!upRes.ok) throw new Error('Gagal upload PDF gabungan');
+    const [newAttachId] = await upRes.json();
+
+    // Simpan ID attachment dan URL ke record BB
+    const qrUrl = `${tokenInfo.baseUrl}/attachments/${newAttachId}/download`;
+    await grist.docApi.applyUserActions([['UpdateRecord', 'BarangBukti', bbId, {
+      pdf_gabungan: ['L', newAttachId],
+      qr_url:       qrUrl,
+    }]]);
+
+    finishLoadingBar(wrapId, fillId);
+    if (labelEl) {
+      labelEl.textContent = '✓ PDF Siap';
+      setTimeout(() => labelEl.classList.remove('visible'), 2000);
+    }
+    await logActivity(`Foto diupload & PDF dibuat untuk BB #${idBBStr} ${bb.nama}`);
+    showToast(`PDF gabungan BB #${idBBStr} berhasil dibuat.`, 'success');
+
+    await loadBarangBukti();
+    if (_detailPerkaraId) await loadDetailBB(_detailPerkaraId);
+
+  } catch (e) {
+    const wrapId  = `foto-bar-wrap-${bbId}`;
+    const fillId  = `foto-bar-fill-${bbId}`;
+    const labelEl = document.getElementById(`foto-bar-label-${bbId}`);
+    resetLoadingBar(wrapId, fillId);
+    if (labelEl) labelEl.classList.remove('visible');
+    showToast('Gagal membuat PDF: ' + (e.message || ''), 'error');
+    console.error('PDF gen error:', e);
+    // Foto sudah tersimpan ke Grist — catat meski PDF gagal (bbId = Grist row ID, id_bb belum tentu tersedia)
+    await logActivity(`Foto diupload untuk BB (rowId:${bbId}) — PDF gagal: ${e.message || 'error'}`).catch(() => {});
+  }
+}
+
+// Baca Blob gambar sebagai base64 data URL (dibutuhkan jsPDF addImage)
+// Kompres gambar ke maks 700KB menggunakan Canvas — iterasi turunkan quality sampai target tercapai
+function compressImage(file) {
+  const MAX_KB = 700;
+  if (file.size <= MAX_KB * 1024) return Promise.resolve(file); // sudah cukup kecil
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Skala dimensi maks 1920px agar ukuran file berkurang signifikan
+      const MAX_DIM = 1920;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const r = Math.min(MAX_DIM / w, MAX_DIM / h);
+        w = Math.round(w * r);
+        h = Math.round(h * r);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      // Turunkan quality bertahap dari 0.85 sampai berhasil masuk target
+      const tryQ = (q) => {
+        canvas.toBlob(blob => {
+          if (blob.size <= MAX_KB * 1024 || q <= 0.15) {
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+          } else {
+            tryQ(Math.round((q - 0.1) * 100) / 100);
+          }
+        }, 'image/jpeg', q);
+      };
+      tryQ(0.85);
+    };
+    img.src = url;
+  });
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Muat HTMLImageElement dari src (data URL) untuk membaca dimensi asli
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img  = new window.Image();
+    img.onload  = () => resolve(img);
+    img.onerror = reject;
+    img.src     = src;
+  });
+}
+
+/* ════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════ */
+// Muat stat cards, log aktivitas terkini, dan bar chart BB per bulan
+async function loadDashboard() {
+  try {
+    const [rawPerkara, rawBB, rawLog] = await Promise.all([
+      grist.docApi.fetchTable('Perkara'),
+      grist.docApi.fetchTable('BarangBukti'),
+      grist.docApi.fetchTable('LogAktivitas'),
+    ]);
+
+    const perkara = tableToObjects(rawPerkara);
+    const bb      = tableToObjects(rawBB);
+    const log     = tableToObjects(rawLog);
+
+    // ── Stat Cards ──
+    const totalPerkara = perkara.length;
+    const totalBB      = bb.length;
+    const totalQR      = bb.filter(b => b.qr_url && b.qr_url.trim() !== '').length;
+
+    document.getElementById('stat-perkara').textContent = totalPerkara;
+    document.getElementById('stat-bb').textContent      = totalBB;
+    document.getElementById('stat-qr').textContent      = totalQR;
+
+    document.getElementById('stat-perkara-sub').textContent =
+      totalPerkara === 0 ? 'Belum ada data' : `${totalPerkara} perkara tercatat`;
+    document.getElementById('stat-bb-sub').textContent =
+      totalBB === 0 ? 'Belum ada data' : `${totalBB} item terdaftar`;
+    document.getElementById('stat-qr-sub').textContent =
+      totalQR === 0 ? 'Belum ada QR dibuat' : `${totalQR} dari ${totalBB} BB`;
+
+    // ── Log Aktivitas Terkini (5 terakhir) ──
+    const tbody = document.getElementById('dash-log-tbody');
+    const sorted = [...log].sort((a, b) => {
+      return new Date(b.tgl || 0) - new Date(a.tgl || 0);
+    }).slice(0, 5);
+
+    if (sorted.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="dash-empty">Belum ada aktivitas.</td></tr>`;
+    } else {
+      tbody.innerHTML = sorted.map((l, i) => {
+        const tgl = l.tgl ? formatDateTime(l.tgl) : '—';
+        return `<tr>
+          <td class="mono-sm">${tgl}</td>
+          <td style="font-size:11px;font-weight:500">${l.petugas || '—'}</td>
+          <td style="font-size:11px">${l.aksi || '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Bar Chart BB per Bulan (6 bulan terakhir) ──
+    renderBarChart(bb);
+
+  } catch (e) {
+    console.error('Dashboard error:', e);
+    showToast('Gagal memuat data dashboard.', 'error');
+  }
+}
+
+// Render bar chart 6 bulan terakhir berdasarkan tgl_masuk BB
+function renderBarChart(bb) {
+  const container = document.getElementById('dash-bar-chart');
+  const now   = new Date();
+  const months = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      label: d.toLocaleString('id-ID', { month: 'short' }),
+      year:  d.getFullYear(),
+      month: d.getMonth(),
+      count: 0,
+    });
+  }
+
+  bb.forEach(b => {
+    if (!b.tgl_masuk) return;
+    const d = new Date(b.tgl_masuk * 1000); // Grist Date = detik sejak epoch
+    months.forEach(m => {
+      if (d.getFullYear() === m.year && d.getMonth() === m.month) m.count++;
+    });
+  });
+
+  const maxCount = Math.max(...months.map(m => m.count), 1);
+  const maxHeight = 70;
+
+  container.innerHTML = months.map((m, i) => {
+    const h = Math.max(Math.round((m.count / maxCount) * maxHeight), m.count > 0 ? 4 : 2);
+    const isLast = i === months.length - 1;
+    return `<div class="bar-col">
+      <div class="bar-fill" style="height:${h}px;${isLast ? 'background:var(--success);opacity:1' : ''}"></div>
+      <div class="bar-label">${m.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// Format ISO string → tanggal + jam singkat untuk log aktivitas dashboard
+function formatDateTime(val) {
+  if (!val) return '—';
+  try {
+    const d = new Date(val);
+    if (isNaN(d)) return val;
+    const tgl = d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' });
+    const jam = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    return `${tgl} ${jam}`;
+  } catch { return val; }
+}
+
+/* ════════════════════════════════════════
+   CETAK QR-CODE (Tahap 10–11)
+════════════════════════════════════════ */
+let _cetakQRData    = []; // cache BB untuk halaman Cetak QR
+let _cetakQRPerkara = []; // cache perkara untuk peta nama di checklist
+let _qrSelection    = new Set(); // set ID BB yang dipilih untuk dicetak
+let _cetakQRVisible = []; // ID BB yang saat ini terlihat (filter aktif)
+let _printLabels    = []; // cache label terakhir untuk re-render bg
+
+// Muat semua BB dan daftar perkara, isi dropdown filter, render tabel checklist
+async function loadCetakQR() {
+  try {
+    const [rawBB, rawP] = await Promise.all([
+      grist.docApi.fetchTable('BarangBukti'),
+      grist.docApi.fetchTable('Perkara'),
+    ]);
+    _cetakQRData    = tableToObjects(rawBB);
+    _cetakQRPerkara = tableToObjects(rawP);
+
+    // Isi dropdown filter perkara
+    const sel = document.getElementById('qr-filter-perkara');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Semua Perkara</option>' +
+      _cetakQRPerkara.map(p => `<option value="${p.id}">${p.no_perkara}</option>`).join('');
+    sel.value = cur;
+
+    renderCetakQR(_cetakQRData, _cetakQRPerkara);
+  } catch (e) {
+    document.getElementById('cetak-qr-tbody').innerHTML =
+      `<tr><td colspan="7" class="dash-empty">Gagal memuat data.</td></tr>`;
+  }
+}
+
+// Render tabel checklist BB ke DOM
+function renderCetakQR(data, perkaraList) {
+  const tbody = document.getElementById('cetak-qr-tbody');
+  _cetakQRVisible = data.map(b => b.id);
+
+  // Buat peta id→perkara; terima null (pakai cache)
+  const pMap = {};
+  const src  = perkaraList || _cetakQRPerkara;
+  src.forEach(p => pMap[p.id] = p);
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="dash-empty">Tidak ada data.</td></tr>`;
+    updateQRCount();
+    return;
+  }
+
+  tbody.innerHTML = data.map(b => {
+    const p      = pMap[b.perkara] || {};
+    const idBB   = String(b.id_bb || b.id).padStart(4, '0');
+    const tgl    = b.tgl_masuk ? formatDate(b.tgl_masuk) : '—';
+    const chk    = _qrSelection.has(b.id) ? 'checked' : '';
+    const selCls = _qrSelection.has(b.id) ? 'selected' : '';
+    return `<tr class="qr-check-row ${selCls}" onclick="toggleQRRow(${b.id},this)">
+      <td onclick="event.stopPropagation()">
+        <input type="checkbox" id="qr-cb-${b.id}" ${chk} onchange="toggleQRSelection(${b.id},this)">
+      </td>
+      <td class="mono-sm">#${idBB}</td>
+      <td style="font-weight:500">${b.nama || '—'}</td>
+      <td class="mono-acc" style="font-size:9px">${p.no_perkara || '—'}</td>
+      <td style="font-size:10px;color:var(--text-dark-2)">${p.terdakwa || '—'}</td>
+      <td class="mono-sm">${tgl}</td>
+      <td><span class="badge ${(b.qr_url && b.qr_url.trim()) ? 'badge-ada':'badge-belum'}">${(b.qr_url && b.qr_url.trim()) ? 'Siap':'Belum'}</span></td>
+    </tr>`;
+  }).join('');
+
+  updateQRCount();
+}
+
+// Filter tabel Cetak QR berdasarkan perkara dan search
+function filterCetakQR() {
+  const q  = document.getElementById('qr-search').value.toLowerCase();
+  const pf = document.getElementById('qr-filter-perkara').value;
+  const filtered = _cetakQRData.filter(b => {
+    const matchP = !pf || String(b.perkara) === pf;
+    const matchQ = !q || (b.nama || '').toLowerCase().includes(q);
+    return matchP && matchQ;
+  });
+  renderCetakQR(filtered, null);
+}
+
+// Toggle seleksi satu baris saat row diklik (bukan checkbox)
+function toggleQRRow(bbId, rowEl) {
+  const cb = document.getElementById('qr-cb-' + bbId);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  if (cb.checked) { _qrSelection.add(bbId); rowEl.classList.add('selected'); }
+  else             { _qrSelection.delete(bbId); rowEl.classList.remove('selected'); }
+  updateQRCount();
+}
+
+// Toggle seleksi dari event checkbox langsung
+function toggleQRSelection(bbId, cbEl) {
+  const row = cbEl.closest('tr');
+  if (cbEl.checked) { _qrSelection.add(bbId); row?.classList.add('selected'); }
+  else               { _qrSelection.delete(bbId); row?.classList.remove('selected'); }
+  updateQRCount();
+}
+
+// Centang semua BB yang saat ini terlihat (filter aktif)
+function cekSemuaQR() {
+  _cetakQRVisible.forEach(id => {
+    _qrSelection.add(id);
+    const cb = document.getElementById('qr-cb-' + id);
+    if (cb) cb.checked = true;
+    cb?.closest('tr')?.classList.add('selected');
+  });
+  updateQRCount();
+}
+
+// Hapus centang semua BB yang saat ini terlihat
+function batalSemuaQR() {
+  _cetakQRVisible.forEach(id => {
+    _qrSelection.delete(id);
+    const cb = document.getElementById('qr-cb-' + id);
+    if (cb) cb.checked = false;
+    cb?.closest('tr')?.classList.remove('selected');
+  });
+  updateQRCount();
+}
+
+// Perbarui label jumlah BB terpilih di toolbar
+function updateQRCount() {
+  const el = document.getElementById('qr-selected-count');
+  if (el) el.textContent = `${_qrSelection.size} dipilih`;
+}
+
+// ── Print Preview ──
+
+// Generate QR code semua BB terpilih lalu buka overlay print preview
+async function openPrintPreview() {
+  if (!_qrSelection.size) {
+    showToast('Pilih minimal 1 BB untuk dicetak.', 'warning');
+    return;
+  }
+
+  // Ambil data BB terpilih
+  const selectedBB = _cetakQRData.filter(b => _qrSelection.has(b.id));
+
+  // Bangun peta perkara dari cache
+  const pMap = {};
+  _cetakQRPerkara.forEach(p => pMap[p.id] = p);
+
+  // Generate QR code untuk tiap BB — konten = qr_url jika ada, fallback ke identitas BB
+  if (typeof QRCode === 'undefined') {
+    showToast('Library QR Code belum selesai dimuat. Tunggu sebentar lalu coba lagi.', 'error', 5000);
+    return;
+  }
+
+  const labels = [];
+  for (const b of selectedBB) {
+    const p     = pMap[b.perkara] || {};
+    const idBBs = String(b.id_bb || b.id).padStart(4, '0');
+    const qrContent = (b.qr_url && b.qr_url.trim())
+      ? b.qr_url.trim()
+      : `BB#${idBBs}|${b.nama || ''}|${p.no_perkara || ''}`;
+    let qrDataUrl = null;
+    try {
+      qrDataUrl = await QRCode.toDataURL(qrContent, {
+        width: 160, margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'M',
+      });
+    } catch(e) {
+      console.error('[QR generate]', e);
+    }
+    labels.push({ bb: b, perkara: p, qrDataUrl });
+  }
+
+  _printLabels = labels; // simpan untuk re-render saat bg berubah
+  renderLabelPages(labels);
+
+  // Tampilkan info jumlah halaman
+  const pageCount = Math.ceil(labels.length / 10);
+  const infoEl = document.getElementById('pp-page-info');
+  if (infoEl) infoEl.textContent = `${labels.length} label · ${pageCount} halaman`;
+
+  document.getElementById('print-preview-overlay').classList.add('open');
+}
+
+// Render semua halaman A4 (10 label per halaman, layout 2×5)
+function renderLabelPages(labels) {
+  const bg   = document.getElementById('pp-bg-select').value;
+  const wrap = document.getElementById('pp-pages-wrap');
+
+  // Bagi label ke kelompok 10
+  const pages = [];
+  for (let i = 0; i < labels.length; i += 10) {
+    pages.push(labels.slice(i, i + 10));
+  }
+
+  wrap.innerHTML = pages.map(page => {
+    const cells  = page.map(lbl => buildLabelCell(lbl.bb, lbl.perkara, lbl.qrDataUrl, bg));
+    const empty  = Array(10 - cells.length).fill('<div class="label-item label-empty"></div>');
+    return `<div class="label-page">${cells.join('')}${empty.join('')}</div>`;
+  }).join('');
+}
+
+// Bangun HTML satu sel label: QR float-right, teks wrap-tight
+function buildLabelCell(bb, p, qrDataUrl, bg) {
+  const idBB    = String(bb.id_bb || bb.id).padStart(4, '0');
+  const bgClass = bg === 'red' ? 'bg-red' : '';
+  // Saat bg merah: QR diberi background putih agar tetap terbaca
+  const qrBg    = bg === 'red' ? ' style="background:#fff;padding:2px"' : '';
+  const qrEl    = qrDataUrl
+    ? `<img class="label-qr" src="${qrDataUrl}"${qrBg}>`
+    : `<div class="label-qr-ph">No QR</div>`;
+  return `<div class="label-item ${bgClass}">
+    ${qrEl}
+    <div class="label-text">
+      <span class="lb-name">${bb.nama || '—'}</span>
+      <span class="lb-row">No: ${p.no_perkara || '—'}</span>
+      <span class="lb-row">Trdkwa: ${p.terdakwa || '—'}</span>
+      <span class="lb-row">Pntp: ${p.penitip || '—'}</span>
+      <span class="lb-row">Tgl Msk: ${bb.tgl_masuk ? formatDate(bb.tgl_masuk) : '—'}</span>
+      <span class="lb-row" style="font-family:monospace;font-size:7.5pt;opacity:.7">#${idBB}</span>
+    </div>
+  </div>`;
+}
+
+// Re-render label dengan pilihan background baru tanpa menutup preview
+function applyPrintBg() {
+  if (_printLabels.length) renderLabelPages(_printLabels);
+}
+
+// Tutup overlay print preview
+function closePrintPreview() {
+  document.getElementById('print-preview-overlay').classList.remove('open');
+}
+
+// Jalankan window.print() dan catat log saat user benar-benar mencetak
+async function doCetakLabel() {
+  await logActivity(`QR Label dicetak untuk ${_printLabels.length} BB`);
+  window.print();
+}
+
+/* ════════════════════════════════════════
+   USER MANAGEMENT (Tahap 12, admin only)
+════════════════════════════════════════ */
+let _userData = []; // cache lokal daftar user
+
+// Ambil semua user dari tabel User dan render ke tabel
+async function loadUser() {
+  try {
+    const raw = await grist.docApi.fetchTable('User');
+    _userData = tableToObjects(raw);
+    renderUser(_userData);
+  } catch (e) {
+    document.getElementById('user-tbody').innerHTML =
+      `<tr><td colspan="3" class="dash-empty">Gagal memuat data user.</td></tr>`;
+  }
+}
+
+// Render tabel user ke DOM
+function renderUser(data) {
+  const tbody = document.getElementById('user-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="dash-empty">Belum ada user.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(u => {
+    const isSelf  = session && u.username === session.username;
+    const roleCls = u.role === 'admin' ? 'badge-admin' : 'badge-operator';
+    return `<tr>
+      <td style="font-weight:500">${u.username}</td>
+      <td><span class="badge ${roleCls}">${u.role}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;align-items:center">
+          ${isSelf
+            ? `<span style="font-size:10px;color:var(--text-muted);font-family:var(--mono)">(Anda)</span>`
+            : `<button class="btn btn-danger btn-sm" onclick="hapusUser(${u.id},this)">Hapus</button>`}
+        </div>
+        <div class="row-delete-bar" id="del-bar-u-${u.id}"></div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Buka modal tambah user dengan form kosong
+function openModalUser() {
+  document.getElementById('mu-username').value = '';
+  document.getElementById('mu-password').value = '';
+  document.getElementById('mu-role').value     = 'operator';
+  openModal('modal-user');
+}
+
+// Simpan user baru ke tabel User di Grist
+async function simpanUser() {
+  const username = document.getElementById('mu-username').value.trim();
+  const password = document.getElementById('mu-password').value;
+  const role     = document.getElementById('mu-role').value;
+
+  if (!username || !password) {
+    showToast('Username dan password wajib diisi.', 'warning'); return;
+  }
+  // Cegah username duplikat (cek cache)
+  if (_userData.find(u => u.username === username)) {
+    showToast('Username sudah digunakan.', 'warning'); return;
+  }
+
+  const btn = document.getElementById('btn-simpan-user');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    await grist.docApi.applyUserActions([['AddRecord', 'User', null, { username, password, role }]]);
+    await logActivity(`User ${username} (${role}) ditambahkan`);
+    showToast(`User "${username}" berhasil ditambahkan.`, 'success');
+    closeModal('modal-user');
+    await loadUser();
+  } catch (e) {
+    showToast('Gagal menambahkan user.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+// Hapus user dengan konfirmasi + animasi bar; tidak bisa hapus akun sendiri
+async function hapusUser(userId, btnEl) {
+  const u = _userData.find(x => x.id === userId);
+  if (!u) return;
+  if (session && u.username === session.username) {
+    showToast('Tidak bisa menghapus akun yang sedang digunakan.', 'warning'); return;
+  }
+  if (!confirm(`Hapus user "${u.username}"?\nAksi ini tidak bisa dibatalkan.`)) return;
+
+  const row = btnEl.closest('tr');
+  row.style.opacity = '.5';
+  const bar = document.getElementById('del-bar-u-' + userId);
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 5, 90);
+    if (bar) bar.style.width = pct + '%';
+  }, 40);
+
+  try {
+    await grist.docApi.applyUserActions([['RemoveRecord', 'User', userId]]);
+    clearInterval(iv);
+    if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--danger)'; }
+    await logActivity(`User ${u.username} dihapus`);
+    showToast(`User "${u.username}" dihapus.`, 'success');
+    setTimeout(async () => { await loadUser(); }, 400);
+  } catch (e) {
+    clearInterval(iv);
+    row.style.opacity = '1';
+    if (bar) bar.style.width = '0';
+    showToast('Gagal menghapus user.', 'error');
+  }
+}
+
+/* ════════════════════════════════════════
+   LOG AKTIVITAS (Tahap 13, admin only)
+════════════════════════════════════════ */
+
+// Ambil semua log dari Grist, sort terbaru di atas, render ke tabel
+async function loadLog() {
+  try {
+    const raw  = await grist.docApi.fetchTable('LogAktivitas');
+    const logs = tableToObjects(raw);
+    // Sort descending berdasarkan tgl (ISO string atau epoch)
+    logs.sort((a, b) => new Date(b.tgl || 0) - new Date(a.tgl || 0));
+    renderLog(logs);
+  } catch (e) {
+    document.getElementById('log-tbody').innerHTML =
+      `<tr><td colspan="3" class="dash-empty">Gagal memuat log.</td></tr>`;
+  }
+}
+
+// Render tabel log ke DOM (read-only, tidak ada aksi)
+function renderLog(data) {
+  const tbody = document.getElementById('log-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="dash-empty">Belum ada aktivitas tercatat.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(l => `<tr>
+    <td class="mono-sm">${l.tgl ? formatDateTime(l.tgl) : '—'}</td>
+    <td style="font-weight:500;font-size:11px">${l.petugas || '—'}</td>
+    <td style="font-size:11px">${l.aksi || '—'}</td>
+  </tr>`).join('');
+}
+</script>
+</body>
+</html>
