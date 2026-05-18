@@ -726,39 +726,16 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
             </div>
           </div>
 
-          <!-- Grid: Aktivitas + Sidebar kanan -->
-          <div class="dash-grid">
-
-            <!-- Kiri: Aktivitas Terkini -->
-            <div>
-              <div class="section-title">Aktivitas Terkini</div>
-              <div class="card" style="padding:0">
-                <table class="act-table">
-                  <thead>
-                    <tr>
-                      <th>Waktu</th>
-                      <th>Petugas</th>
-                      <th>Aktivitas</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dash-log-tbody">
-                    <tr><td colspan="3" class="dash-empty">Memuat data...</td></tr>
-                  </tbody>
-                </table>
+          <!-- Grid: Bar Chart -->
+          <div>
+            <div class="section-title">BB Masuk per Bulan</div>
+            <div class="card">
+              <div class="bar-chart" id="dash-bar-chart">
+                <div class="dash-empty" style="width:100%">Memuat...</div>
               </div>
             </div>
-
-            <!-- Kanan: Bar Chart -->
-            <div>
-              <div class="section-title">BB Masuk per Bulan</div>
-              <div class="card">
-                <div class="bar-chart" id="dash-bar-chart">
-                  <div class="dash-empty" style="width:100%">Memuat...</div>
-                </div>
-              </div>
-            </div>
-
           </div>
+
         </div>
       </div>
 
