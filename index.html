@@ -468,12 +468,12 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
   /* Hamburger button */
   .mob-hamburger{
     display:flex;align-items:center;justify-content:center;
-    width:36px;height:36px;background:none;border:none;
+    width:32px;height:32px;background:none;border:none;
     color:var(--text-dark);cursor:pointer;border-radius:var(--radius);
-    flex-shrink:0;transition:background .15s;
+    flex-shrink:0;transition:color .15s;padding:0;
   }
-  .mob-hamburger:hover{background:var(--bg-page)}
-  .mob-hamburger svg{width:20px;height:20px}
+  .mob-hamburger:hover{color:var(--accent)}
+  .mob-hamburger svg{width:22px;height:22px;display:block}
 
   /* Sidebar: drawer overlay */
   .sidebar{
@@ -530,6 +530,16 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
   /* Show hamburger */
   .mob-hamburger{display:flex}
+
+  /* Sidebar drawer: always show text+icon when open on mobile */
+  .sidebar.mob-open .sidebar-label{display:block}
+  .sidebar.mob-open .nav-item{padding:9px 18px;justify-content:flex-start;gap:10px}
+  .sidebar.mob-open .nav-label{display:block}
+  .sidebar.mob-open .sidebar-logo{padding:14px 14px 12px;justify-content:flex-start}
+  .sidebar.mob-open .sidebar-logo-text{display:block}
+  .sidebar.mob-open .sidebar-footer{padding:14px 18px;flex-direction:row;gap:10px}
+  .sidebar.mob-open .user-info{display:block}
+  .sidebar.mob-open .btn-logout{width:auto;padding:4px 7px}
 
   /* Perkara: hide table, show cards */
   #page-perkara .data-table{display:none}
