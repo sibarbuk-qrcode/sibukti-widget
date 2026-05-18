@@ -452,6 +452,127 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .lb-name{font-weight:700;display:block;margin-bottom:3px}
 .lb-row{display:block}
 
+/* Hamburger: hidden on desktop */
+.mob-hamburger{display:none}
+
+/* Perkara cards wrap: hidden on desktop */
+.perkara-cards-wrap{display:none}
+
+/* ── Mobile Responsive ── */
+@media (max-width:768px){
+  :root{--sidebar-w:260px}
+
+  /* App layout */
+  #app{position:relative;overflow:hidden}
+
+  /* Hamburger button */
+  .mob-hamburger{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;background:none;border:none;
+    color:var(--text-dark);cursor:pointer;border-radius:var(--radius);
+    flex-shrink:0;transition:background .15s;
+  }
+  .mob-hamburger:hover{background:var(--bg-page)}
+  .mob-hamburger svg{width:20px;height:20px}
+
+  /* Sidebar: drawer overlay */
+  .sidebar{
+    position:fixed;top:0;left:0;height:100%;z-index:400;
+    transform:translateX(-100%);transition:transform .25s ease,width .25s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,.25);
+  }
+  .sidebar.mob-open{transform:translateX(0)}
+  .sidebar.collapsed{width:var(--sidebar-w);transform:translateX(-100%)}
+  .sidebar.collapsed.mob-open{transform:translateX(0)}
+  .sidebar-toggle{display:none}
+
+  /* Overlay backdrop */
+  .mob-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+    z-index:399;
+  }
+  .mob-backdrop.visible{display:block}
+
+  /* Main takes full width */
+  .main{width:100%}
+
+  /* Sticky toolbar */
+  .sticky-toolbar{
+    padding:8px 12px;gap:6px;
+  }
+  .sticky-toolbar .search-box{max-width:100%!important;flex:1}
+  .page-title{font-size:12px}
+
+  /* Page scroll */
+  .page-scroll{padding:12px}
+
+  /* Stats grid: 1 col on small, 3 col on tablet */
+  .stats-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .stat-value{font-size:22px}
+
+  /* Dash grid: stack */
+  .dash-grid{grid-template-columns:1fr}
+
+  /* Info grid: 1 col */
+  .info-grid{grid-template-columns:1fr}
+
+  /* Form row: stack */
+  .form-row{grid-template-columns:1fr}
+
+  /* Modal full width */
+  .modal{width:100%;max-width:100%;border-radius:12px 12px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;animation:slideUpMob .25s ease}
+  .modal-overlay{align-items:flex-end}
+  @keyframes slideUpMob{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+  /* Detail header: wrap */
+  .detail-header{flex-wrap:wrap;gap:8px;padding:10px 12px}
+  #detail-perkara-actions{margin-left:0!important;width:100%;justify-content:flex-start!important}
+
+  /* Show hamburger */
+  .mob-hamburger{display:flex}
+
+  /* Perkara: hide table, show cards */
+  #page-perkara .data-table{display:none}
+  .perkara-cards-wrap{display:block}
+
+  /* Perkara table → card view */
+  #perkara-tbody tr{display:none}
+  .perkara-card{
+    background:var(--bg-card);border:1px solid var(--border-light);
+    border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;
+    cursor:pointer;transition:box-shadow .15s,background .15s;
+  }
+  .perkara-card:hover{background:var(--bg-page);box-shadow:0 2px 10px rgba(0,0,0,.07)}
+  .perkara-card-no{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px}
+  .perkara-card-terdakwa{font-size:13px;font-weight:600;color:var(--text-dark);margin-bottom:2px}
+  .perkara-card-meta{font-size:10px;color:var(--text-dark-2);display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .perkara-card-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+
+  /* Cetak QR table → scrollable */
+  .data-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* BB card: stack actions */
+  .bb-card{flex-wrap:wrap}
+  .bb-upload-wrap{width:100%;flex-direction:row;justify-content:flex-start;margin-top:6px}
+
+  /* Toast: full width bottom */
+  #toast-container{left:12px;right:12px;bottom:12px}
+  .toast{min-width:unset;width:100%}
+
+  /* Print preview controls: wrap */
+  .pp-controls-wrap{gap:8px;padding:8px 12px}
+  .pp-title{font-size:11px}
+}
+
+@media (max-width:480px){
+  .stats-grid{grid-template-columns:1fr}
+  .sticky-toolbar{flex-wrap:wrap}
+  .sticky-toolbar > div[style*="margin-left:auto"]{margin-left:0!important;width:100%}
+  .sticky-toolbar > div[style*="margin-left:auto"] .btn{width:100%;justify-content:center}
+  .search-box{max-width:100%!important}
+  #bb-filter-perkara,#qr-filter-perkara{width:100%}
+}
+
 /* ── Media Print: hanya halaman label yang tercetak ── */
 @media print{
   #grist-loading,#login-screen,#app,#toast-container,.modal-overlay{display:none!important}
@@ -503,8 +624,11 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 <!-- ── Aplikasi Utama ── -->
 <div id="app">
 
+  <!-- Mobile backdrop -->
+  <div class="mob-backdrop" id="mob-backdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- Sidebar -->
-  <nav class="sidebar">
+  <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="https://raw.githubusercontent.com/sibarbuk-qrcode/sibukti-widget/refs/heads/main/logoKejaksaan.png" alt="Logo Kejaksaan" class="sidebar-kejaksaan-logo">
       <div class="sidebar-logo-text">
@@ -567,6 +691,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- DASHBOARD -->
       <div id="page-dashboard" class="page active">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <span class="page-title">Dashboard</span>
           <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadDashboard()">↻ Refresh</button>
         </div>
@@ -630,6 +755,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- PERKARA -->
       <div id="page-perkara" class="page">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <div class="search-box">
             <span class="search-icon">🔍</span>
             <input type="text" id="perkara-search" placeholder="Cari no. perkara, terdakwa, penitip…" oninput="filterPerkara()">
@@ -654,6 +780,8 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
               <tr><td colspan="6" class="dash-empty">Memuat data...</td></tr>
             </tbody>
           </table>
+          <!-- Mobile card view (tampil hanya di ≤768px) -->
+          <div id="perkara-cards" class="perkara-cards-wrap"></div>
         </div>
       </div>
 
@@ -695,6 +823,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- BARANG BUKTI -->
       <div id="page-barang-bukti" class="page">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <div class="search-box" style="max-width:220px">
             <span class="search-icon">🔍</span>
             <input type="text" id="bb-search" placeholder="Cari nama barang bukti…" oninput="filterBB()">
@@ -717,6 +846,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- CETAK QR -->
       <div id="page-cetak-qr" class="page">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <div class="search-box" style="max-width:200px">
             <span class="search-icon">🔍</span>
             <input type="text" id="qr-search" placeholder="Cari nama BB…" oninput="filterCetakQR()">
@@ -753,6 +883,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- USER (admin only) -->
       <div id="page-user" class="page">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <span class="page-title">Manajemen User</span>
           <div style="margin-left:auto">
             <button class="btn btn-primary" onclick="openModalUser()">+ Tambah User</button>
@@ -777,6 +908,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
       <!-- LOG AKTIVITAS (admin only) -->
       <div id="page-log" class="page">
         <div class="sticky-toolbar">
+          <button class="mob-hamburger" onclick="openMobileSidebar()" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <span class="page-title">Log Aktivitas</span>
           <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadLog()">↻ Refresh</button>
         </div>
@@ -1126,8 +1258,22 @@ function toggleSidebar() {
   try { localStorage.setItem('sibukti_sidebar', collapsed ? '1' : '0'); } catch(e) {}
 }
 
+function openMobileSidebar() {
+  if (window.innerWidth > 768) return;
+  document.getElementById('sidebar').classList.add('mob-open');
+  document.getElementById('mob-backdrop').classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mob-open');
+  document.getElementById('mob-backdrop').classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
 // Aktifkan halaman berdasarkan id, update state aktif sidebar, panggil load* terkait
 function showPage(id, navEl) {
+  closeMobileSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
@@ -1294,14 +1440,15 @@ async function loadPerkara() {
 // Render ulang tabel perkara ke DOM berdasarkan data yang diberikan
 function renderPerkara(data) {
   const tbody = document.getElementById('perkara-tbody');
+  const isMobile = window.innerWidth <= 768;
   if (!data.length) {
     tbody.innerHTML = `<tr><td colspan="6" class="dash-empty">Belum ada data perkara.</td></tr>`;
+    document.getElementById('perkara-cards').innerHTML = `<div class="dash-empty">Belum ada data perkara.</div>`;
     return;
   }
   const isAdmin = session && session.role === 'admin';
   tbody.innerHTML = data.map(p => {
     const tgl    = p.tgl_masuk ? formatDate(p.tgl_masuk) : '—';
-    // parseFotoIds menangani array Grist ['L', id1, ...] dengan benar
     const hasDok = parseFotoIds(p.dokumen).length > 0;
     return `<tr onclick="openDetailPerkara(${p.id})">
       <td class="mono-acc">${p.no_perkara || '—'}</td>
@@ -1317,6 +1464,27 @@ function renderPerkara(data) {
         <div class="row-delete-bar" id="del-bar-p-${p.id}"></div>
       </td>
     </tr>`;
+  }).join('');
+
+  // Mobile card view
+  document.getElementById('perkara-cards').innerHTML = data.map(p => {
+    const tgl    = p.tgl_masuk ? formatDate(p.tgl_masuk) : '—';
+    const hasDok = parseFotoIds(p.dokumen).length > 0;
+    return `<div class="perkara-card" onclick="openDetailPerkara(${p.id})">
+      <div class="perkara-card-no">${p.no_perkara || '—'}</div>
+      <div class="perkara-card-terdakwa">${p.terdakwa || '—'}</div>
+      <div class="perkara-card-meta">
+        <span>Penitip: ${p.penitip || '—'}</span>
+        <span>Masuk: ${tgl}</span>
+        <span class="badge ${hasDok ? 'badge-ada' : 'badge-belum'}">${hasDok ? 'Dok. Ada' : 'Dok. Belum'}</span>
+      </div>
+      <div class="perkara-card-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-outline btn-sm" onclick="openDetailPerkara(${p.id})">Detail</button>
+        <button class="btn btn-primary btn-sm" onclick="openModalPerkara(${p.id})">Edit</button>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="hapusPerkara(${p.id},this)">Hapus</button>` : ''}
+      </div>
+      <div class="row-delete-bar" id="del-bar-pm-${p.id}"></div>
+    </div>`;
   }).join('');
 }
 
