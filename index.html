@@ -1067,7 +1067,7 @@ let gristReady = false;
 // Wrapper baca: coba Grist langsung (kalau ada sesi), fallback ke Worker
 async function fetchTableProxy(tableName) {
   if (gristReady) {
-    try { return await fetchTableProxy(tableName); } catch(e) {}
+    try { return await grist.docApi.fetchTable(tableName); } catch(e) {}
   }
   const res = await fetch(`${GRIST_PROXY_URL}/table/${tableName}`);
   if (!res.ok) throw new Error(await res.text());
@@ -1077,7 +1077,7 @@ async function fetchTableProxy(tableName) {
 // Wrapper tulis: coba Grist langsung (kalau ada sesi), fallback ke Worker
 async function applyActions(actions) {
   if (gristReady) {
-    try { return await applyActions(actions); } catch(e) {}
+    try { return await grist.docApi.applyUserActions(actions); } catch(e) {}
   }
   const res = await fetch(`${GRIST_PROXY_URL}/apply`, {
     method: 'POST',
@@ -2341,15 +2341,13 @@ function loadImage(src) {
 // Muat stat cards, log aktivitas terkini, dan bar chart BB per bulan
 async function loadDashboard() {
   try {
-    const [rawPerkara, rawBB, rawLog] = await Promise.all([
+    const [rawPerkara, rawBB] = await Promise.all([
       fetchTableProxy('Perkara'),
       fetchTableProxy('BarangBukti'),
-      fetchTableProxy('LogAktivitas'),
     ]);
 
     const perkara = tableToObjects(rawPerkara);
     const bb      = tableToObjects(rawBB);
-    const log     = tableToObjects(rawLog);
 
     // ── Stat Cards ──
     const totalPerkara = perkara.length;
@@ -2366,25 +2364,6 @@ async function loadDashboard() {
       totalBB === 0 ? 'Belum ada data' : `${totalBB} item terdaftar`;
     document.getElementById('stat-qr-sub').textContent =
       totalQR === 0 ? 'Belum ada QR dibuat' : `${totalQR} dari ${totalBB} BB`;
-
-    // ── Log Aktivitas Terkini (5 terakhir) ──
-    const tbody = document.getElementById('dash-log-tbody');
-    const sorted = [...log].sort((a, b) => {
-      return new Date(b.tgl || 0) - new Date(a.tgl || 0);
-    }).slice(0, 5);
-
-    if (sorted.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="3" class="dash-empty">Belum ada aktivitas.</td></tr>`;
-    } else {
-      tbody.innerHTML = sorted.map((l, i) => {
-        const tgl = l.tgl ? formatDateTime(l.tgl) : '—';
-        return `<tr>
-          <td class="mono-sm">${tgl}</td>
-          <td style="font-size:11px;font-weight:500">${l.petugas || '—'}</td>
-          <td style="font-size:11px">${l.aksi || '—'}</td>
-        </tr>`;
-      }).join('');
-    }
 
     // ── Bar Chart BB per Bulan (6 bulan terakhir) ──
     renderBarChart(bb);
