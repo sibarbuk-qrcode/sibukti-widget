@@ -722,8 +722,6 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
             style="padding:5px 8px;border:1px solid var(--border-light);border-radius:var(--radius);font-size:11px;color:var(--text-dark);background:var(--bg-card);cursor:pointer;outline:none;transition:border-color .15s">
             <option value="">Semua Perkara</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="cekSemuaQR()">Cek Semua</button>
-          <button class="btn btn-outline btn-sm" onclick="batalSemuaQR()">Batal Semua</button>
           <span id="qr-selected-count" style="font-family:var(--mono);font-size:10px;color:var(--accent)">0 dipilih</span>
           <div style="margin-left:auto">
             <button class="btn btn-accent" onclick="openPrintPreview()">🖨 Cetak Label</button>
@@ -733,7 +731,7 @@ button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
           <table class="data-table">
             <thead>
               <tr>
-                <th style="width:36px">☐</th>
+                <th style="width:36px"><input type="checkbox" id="qr-header-cb" onclick="toggleAllQR()" style="cursor:pointer;width:14px;height:14px"></th>
                 <th>No.BB</th>
                 <th>Nama Barang Bukti</th>
                 <th>Perkara</th>
@@ -2411,10 +2409,28 @@ function batalSemuaQR() {
   updateQRCount();
 }
 
-// Perbarui label jumlah BB terpilih di toolbar
+// Toggle semua baris via header checkbox
+function toggleAllQR() {
+  const hdr = document.getElementById('qr-header-cb');
+  hdr.indeterminate = false;
+  if (hdr.checked) { cekSemuaQR(); } else { batalSemuaQR(); }
+}
+
+// Perbarui label jumlah dan state header checkbox
 function updateQRCount() {
   const el = document.getElementById('qr-selected-count');
   if (el) el.textContent = `${_qrSelection.size} dipilih`;
+  const hdr = document.getElementById('qr-header-cb');
+  if (!hdr) return;
+  const total    = _cetakQRVisible.length;
+  const selected = _cetakQRVisible.filter(id => _qrSelection.has(id)).length;
+  if (total === 0 || selected === 0) {
+    hdr.checked = false; hdr.indeterminate = false;
+  } else if (selected === total) {
+    hdr.checked = true;  hdr.indeterminate = false;
+  } else {
+    hdr.checked = false; hdr.indeterminate = true;
+  }
 }
 
 // ── Print Preview ──
